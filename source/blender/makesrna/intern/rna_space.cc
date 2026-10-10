@@ -597,6 +597,17 @@ const EnumPropertyItem rna_enum_clip_editor_mode_items[] = {
  * Actually populated dynamically through a function,
  * but helps for contextless access (e.g. doc, i18n...).
  */
+const EnumPropertyItem blaya_workflows[] = {
+      {0, "PROPERTIES", ICON_PROPERTIES, "Properties", "Standard Blender properties"},
+      {1, "MODEL", ICON_MESH_CUBE, "Model", "Modeling, selection, pivots, creation and cleanup"},
+      {2, "UV", ICON_UV, "UV", "Unwrap, orient, inspect and finish UVs"},
+      {6, "SCULPT", ICON_SCULPTMODE_HLT, "Sculpt", "ZBrush to Blender learning map"},
+      {5, "ANIMATION", ICON_ANIM, "Animation", "Keying, timing and animation curves"},
+      {3, "SCENE", ICON_OUTLINER, "Scene", "Organize objects and scene relationships"},
+      {4, "SETUP", ICON_PREFERENCES, "Setup", "Shelves, display and shortcuts"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
 const EnumPropertyItem buttons_context_items[] = {
     {BCONTEXT_TOOL, "TOOL", ICON_TOOL_SETTINGS, "Tool", "Active Tool and Workspace settings"},
     {BCONTEXT_RENDER, "RENDER", ICON_SCENE, "Render", "Render Properties"},
@@ -2430,6 +2441,13 @@ static void rna_SpaceProperties_pin_id_update(Main * /*bmain*/, Scene * /*scene*
     default:
       break;
   }
+}
+
+static const EnumPropertyItem *rna_SpaceProperties_blaya_workflow_itemf(
+    bContext * /*C*/, PointerRNA *ptr, PropertyRNA * /*prop*/, bool * /*r_free*/)
+{
+  const SpaceProperties *space = static_cast<const SpaceProperties *>(ptr->data);
+  return blaya_workflows + (space->space_subtype != 0 ? 1 : 0);
 }
 
 static void rna_SpaceProperties_context_set(PointerRNA *ptr, int value)
@@ -6413,6 +6431,14 @@ static void rna_def_space_properties(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "SpaceProperties", "Space");
   RNA_def_struct_sdna(srna, "SpaceProperties");
   RNA_def_struct_ui_text(srna, "Properties Space", "Properties space data");
+
+  prop = RNA_def_property(srna, "blaya_workflow", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "space_subtype");
+  RNA_def_property_enum_items(prop, blaya_workflows);
+  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_SpaceProperties_blaya_workflow_itemf");
+  RNA_def_property_ui_text(prop, "Workflow", "Active Kitchen 3D tool workflow");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_PROPERTIES, nullptr);
+
 
   prop = RNA_def_property(srna, "context", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "mainb");

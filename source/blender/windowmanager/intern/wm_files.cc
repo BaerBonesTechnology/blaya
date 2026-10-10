@@ -2712,6 +2712,13 @@ static void rna_struct_update_when_changed(bContext *C,
     if (STREQ(RNA_property_identifier(prop), "rna_type")) {
       continue;
     }
+    /* The previous UserDef is a shallow snapshot; its owned native workflow
+     * properties were freed when preferences were replaced. Startup handlers
+     * and the keyconfig reload apply the current native workflow settings. */
+    if (ptr_a->type == RNA_Preferences && STREQ(RNA_property_identifier(prop), "blaya")) {
+      continue;
+    }
+
     switch (RNA_property_type(prop)) {
       case PROP_POINTER: {
         PointerRNA ptr_sub_a = RNA_property_pointer_get(ptr_a, prop);

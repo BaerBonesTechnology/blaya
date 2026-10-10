@@ -32,21 +32,21 @@
 		</dict>
 	</array>
 	<key>CFBundleExecutable</key>
-	<string>Blender</string>
+	<string>Kitchen 3D</string>
 	<key>CFBundleGetInfoString</key>
-	<string>${MACOSX_BUNDLE_LONG_VERSION_STRING}, Blender Foundation</string>
+	<string>Kitchen 3D framework, based on Blender ${MACOSX_BUNDLE_LONG_VERSION_STRING}; Blender Foundation and contributors</string>
 	<!-- Legacy, non-Liquid Glass icon, used on pre-Tahoe / 26 macOS versions. -->
 	<key>CFBundleIconFile</key>
-	<string>blender_icon_legacy.icns</string>
-	<!-- Modern Liquid Glass icon, the app bundle Asset.car file needs to be regenerated in Xcode on modification -->
+	<string>blaya.icns</string>
+	<!-- Modern Liquid Glass icon, the app bundle Assets.car file needs to be regenerated in Xcode on modification -->
 	<key>CFBundleIconName</key>
-	<string>blender_liquid_glass</string>
+	<string>blaya</string>
 	<key>CFBundleIdentifier</key>
-	<string>org.blenderfoundation.blender</string>
+	<string>com.baerbonestechnology.blaya</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Blender</string>
+	<string>Kitchen 3D</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

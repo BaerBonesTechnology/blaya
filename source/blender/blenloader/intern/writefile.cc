@@ -1309,6 +1309,10 @@ static void write_userdef(BlendWriter *writer, const UserDef *userdef)
     }
   }
 
+  if (userdef->blaya_properties) {
+    IDP_BlendWrite(writer, userdef->blaya_properties);
+  }
+
   for (const bAddon &bext : userdef->addons) {
     writer->write_struct(&bext);
     if (bext.prop) {

@@ -49,6 +49,9 @@ class PROPERTIES_HT_header(Header):
         ui_scale = context.preferences.system.ui_scale
 
         layout.template_header()
+        if view.blaya_workflow != 'PROPERTIES':
+            layout.label(text='Kitchen 3D Tools')
+            return
 
         layout.separator_spacer()
 
@@ -86,6 +89,10 @@ class PROPERTIES_PT_navigation_bar(Panel):
 
         layout.scale_x = 1.4
         layout.scale_y = 1.4
+        if view.blaya_workflow != 'PROPERTIES':
+            from blaya.native_editor import draw_navigation
+            draw_navigation(layout, view)
+            return
         if view.search_filter:
             layout.prop_tabs_enum(
                 view, "context", data_highlight=view,

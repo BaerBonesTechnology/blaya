@@ -357,6 +357,10 @@ void BKE_blender_userdef_data_free(UserDef *userdef, bool clear_fonts)
   userdef_free_keyconfig_prefs(userdef);
   userdef_free_user_menus(userdef);
   userdef_free_addons(userdef);
+  if (userdef->blaya_properties) {
+    IDP_FreeProperty(userdef->blaya_properties);
+    userdef->blaya_properties = nullptr;
+  }
 
   if (clear_fonts) {
     for (uiFont &font : userdef->uifonts) {
@@ -432,6 +436,7 @@ void BKE_blender_userdef_app_template_data_swap(UserDef *userdef_a, UserDef *use
   VALUE_SWAP(uifonts);
   VALUE_SWAP(themes);
   VALUE_SWAP(addons);
+  VALUE_SWAP(blaya_properties);
   VALUE_SWAP(user_keymaps);
   VALUE_SWAP(user_keyconfig_prefs);
 

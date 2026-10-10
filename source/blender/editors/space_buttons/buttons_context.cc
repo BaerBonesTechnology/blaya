@@ -1299,7 +1299,7 @@ int /*eContextResult*/ buttons_context(const bContext *C,
 static bool buttons_panel_context_poll(const bContext *C, PanelType * /*pt*/)
 {
   SpaceProperties *sbuts = CTX_wm_space_properties(C);
-  return sbuts->mainb != BCONTEXT_TOOL;
+  return sbuts->space_subtype == 0 && sbuts->mainb != BCONTEXT_TOOL;
 }
 
 static void buttons_panel_context_draw(const bContext *C, Panel *panel)

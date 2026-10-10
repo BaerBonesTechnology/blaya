@@ -1096,6 +1096,9 @@ struct UserDef {
   ListBaseT<struct wmKeyMap> user_keymaps = {nullptr, nullptr};
   ListBaseT<struct wmKeyConfigPref> user_keyconfig_prefs = {nullptr, nullptr};
   ListBaseT<bAddon> addons = {nullptr, nullptr};
+  /** Native workflow preferences, stored independently of installed add-ons. */
+  IDProperty *blaya_properties = nullptr;
+  void *_pad_blaya = nullptr;
   ListBaseT<bPathCompare> autoexec_paths = {nullptr, nullptr};
   /**
    * Optional user locations for Python scripts.

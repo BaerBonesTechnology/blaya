@@ -63,6 +63,7 @@
 #include "BKE_paint_types.hh"
 #include "BKE_screen.hh"
 #include "BKE_workspace.hh"
+#include "BKE_unit.hh"
 
 #include "BLO_readfile.hh"
 
@@ -451,6 +452,16 @@ static void blo_update_defaults_windowmanager(wmWindowManager *wm)
 
 static void blo_update_defaults_scene(Main *bmain, Scene *scene)
 {
+  /* Kitchen 3D factory scenes use feet/inches without changing geometry scale. */
+  scene->unit.system = USER_UNIT_IMPERIAL;
+  scene->unit.flag |= USER_UNIT_OPT_SPLIT;
+  scene->unit.scale_length = 1.0f;
+  scene->unit.length_unit = uchar(BKE_unit_base_of_type_get(USER_UNIT_IMPERIAL, B_UNIT_LENGTH));
+  scene->unit.mass_unit = uchar(BKE_unit_base_of_type_get(USER_UNIT_IMPERIAL, B_UNIT_MASS));
+  scene->unit.time_unit = uchar(BKE_unit_base_of_type_get(USER_UNIT_IMPERIAL, B_UNIT_TIME));
+  scene->unit.temperature_unit = uchar(
+      BKE_unit_base_of_type_get(USER_UNIT_IMPERIAL, B_UNIT_TEMPERATURE));
+
   ToolSettings *ts = scene->toolsettings;
 
   STRNCPY_UTF8(scene->r.engine, RE_engine_id_BLENDER_EEVEE);

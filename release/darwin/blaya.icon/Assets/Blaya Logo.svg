@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<title>Kitchen 3D — rounded 3D stove</title>
+<g fill="none" stroke="#16A6B4" stroke-width="30" stroke-linecap="round" stroke-linejoin="round">
+
+<path d="M195 845Q155 845 155 805V340Q155 320 175 304L350 167Q365 155 390 155H830Q870 155 870 195V660Q870 680 850 696L678 831Q660 845 635 845Z" />
+<path d="M160 321H620Q660 321 660 361V813Q660 834 647 844M650 332 862 167" />
+<path d="M155 435H641Q657 435 673 423L870 270" />
+<ellipse cx="448" cy="230" rx="64" ry="22" transform="rotate(-15 448 230)" />
+<ellipse cx="651" cy="230" rx="64" ry="22" transform="rotate(-15 651 230)" />
+<circle cx="272" cy="377" r="19" /><circle cx="407" cy="377" r="19" /><circle cx="542" cy="377" r="19" />
+<path d="M325 494H490" stroke-width="36" />
+<rect x="245" y="545" width="325" height="215" rx="40" />
+</g></svg>

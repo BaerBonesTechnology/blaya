@@ -1,0 +1,26 @@
+{
+  "fill": {
+    "solid": "srgb:0.00000,0.00000,0.00000,0.00000"
+  },
+  "groups": [
+    {
+      "layers": [
+        {
+          "image-name": "Blaya Logo.svg",
+          "name": "Kitchen 3D Logo"
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": "shared"
+  }
+}

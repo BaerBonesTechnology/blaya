@@ -42,6 +42,7 @@
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.hh"
 
 #include "SEQ_modifier.hh"
@@ -570,6 +571,13 @@ static void buttons_main_region_layout(const bContext *C, ARegion *region)
   /* draw entirely, view changes should be handled here */
   SpaceProperties *sbuts = CTX_wm_space_properties(C);
 
+  if (sbuts->space_subtype != 0) {
+    const char *contexts[] = {"blaya", nullptr};
+    ED_region_panels_layout_ex(C, region, &region->runtime->type->paneltypes,
+                               wm::OpCallContext::InvokeRegionWin, contexts, nullptr);
+    return;
+  }
+
   /* Needed for RNA to get the good values! */
   buttons_context_compute(C, sbuts);
 
@@ -724,6 +732,10 @@ static void buttons_navigation_bar_region_message_subscribe(
 static void buttons_area_redraw(ScrArea *area, short buttons)
 {
   SpaceProperties *sbuts = area->spacedata.first_as<SpaceProperties>();
+  if (sbuts->space_subtype != 0) {
+    ED_area_tag_redraw(area);
+    return;
+  }
 
   /* if the area's current button set is equal to the one to redraw */
   if (sbuts->mainb == buttons) {
@@ -1102,6 +1114,42 @@ static void buttons_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 /** \name Space Type Initialization
  * \{ */
 
+static int buttons_space_subtype_get(ScrArea *area)
+{
+  return area->spacedata.first_as<SpaceProperties>()->space_subtype != 0;
+}
+
+static void buttons_space_subtype_set(ScrArea *area, int value)
+{
+  SpaceProperties *space = area->spacedata.first_as<SpaceProperties>();
+  space->space_subtype = value ? 1 : 0;
+  ED_area_tag_redraw(area);
+}
+
+static void buttons_space_subtype_item_extend(bContext * /*C*/,
+                                               EnumPropertyItem **item,
+                                               int *totitem)
+{
+  static const EnumPropertyItem items[] = {
+      {0, "PROPERTIES", ICON_PROPERTIES, "Properties", "Edit object and scene properties"},
+      {1, "BLAYA_TOOLS", ICON_TOOL_SETTINGS, "Kitchen 3D Tools", "Modeling and UV workflow tools"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+  RNA_enum_items_add(item, totitem, items);
+}
+
+static StringRefNull buttons_space_name_get(const ScrArea *area)
+{
+  const SpaceProperties *space = area->spacedata.first_as<SpaceProperties>();
+  return space->space_subtype ? "Kitchen 3D Tools" : "Properties";
+}
+
+static int buttons_space_icon_get(const ScrArea *area)
+{
+  const SpaceProperties *space = area->spacedata.first_as<SpaceProperties>();
+  return space->space_subtype ? ICON_TOOL_SETTINGS : ICON_PROPERTIES;
+}
+
 void ED_spacetype_buttons()
 {
   std::unique_ptr<SpaceType> st = std::make_unique<SpaceType>();
@@ -1118,6 +1166,11 @@ void ED_spacetype_buttons()
   st->keymap = buttons_keymap;
   st->listener = buttons_area_listener;
   st->context = buttons_context;
+  st->space_subtype_get = buttons_space_subtype_get;
+  st->space_subtype_set = buttons_space_subtype_set;
+  st->space_subtype_item_extend = buttons_space_subtype_item_extend;
+  st->space_name_get = buttons_space_name_get;
+  st->space_icon_get = buttons_space_icon_get;
   st->id_remap = buttons_id_remap;
   st->foreach_id = buttons_foreach_id;
   st->blend_read_data = buttons_space_blend_read_data;

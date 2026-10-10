@@ -220,13 +220,14 @@ static void scene_init_data(ID *id)
                      CURVE_PRESET_BELL,
                      CurveMapSlopeType::Positive);
 
-  scene->unit.system = USER_UNIT_METRIC;
+  scene->unit.system = USER_UNIT_IMPERIAL;
+  scene->unit.flag |= USER_UNIT_OPT_SPLIT;
   scene->unit.scale_length = 1.0f;
-  scene->unit.length_unit = uchar(BKE_unit_base_of_type_get(USER_UNIT_METRIC, B_UNIT_LENGTH));
-  scene->unit.mass_unit = uchar(BKE_unit_base_of_type_get(USER_UNIT_METRIC, B_UNIT_MASS));
-  scene->unit.time_unit = uchar(BKE_unit_base_of_type_get(USER_UNIT_METRIC, B_UNIT_TIME));
+  scene->unit.length_unit = uchar(BKE_unit_base_of_type_get(USER_UNIT_IMPERIAL, B_UNIT_LENGTH));
+  scene->unit.mass_unit = uchar(BKE_unit_base_of_type_get(USER_UNIT_IMPERIAL, B_UNIT_MASS));
+  scene->unit.time_unit = uchar(BKE_unit_base_of_type_get(USER_UNIT_IMPERIAL, B_UNIT_TIME));
   scene->unit.temperature_unit = uchar(
-      BKE_unit_base_of_type_get(USER_UNIT_METRIC, B_UNIT_TEMPERATURE));
+      BKE_unit_base_of_type_get(USER_UNIT_IMPERIAL, B_UNIT_TEMPERATURE));
 
   {
     ParticleEditSettings *pset;

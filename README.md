@@ -1,3 +1,16 @@
+Kitchen 3D — a workflow framework for Blender
+=======================================
+
+Familiar workflows for artists coming from Maya, built on Blender’s tools and
+open-source foundation. This is an independent customized distribution; it is
+not affiliated with or endorsed by the Blender Foundation.
+
+See [Kitchen 3D integration notes](BLAYA.md). Please [support Blender development](https://fund.blender.org/).
+
+The upstream project information and credits follow.
+
+---
+
 <!--
 Keep this document short & concise,
 linking to external resources instead of including content in-line.

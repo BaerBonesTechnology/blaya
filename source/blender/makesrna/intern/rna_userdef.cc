@@ -1389,6 +1389,11 @@ static void rna_Addon_module_set(PointerRNA *ptr, const char *value)
   }
 }
 
+static IDProperty **rna_Preferences_blaya_idprops(PointerRNA *ptr)
+{
+  return &static_cast<UserDef *>(ptr->data)->blaya_properties;
+}
+
 static IDProperty **rna_AddonPref_idprops(PointerRNA *ptr)
 {
   return reinterpret_cast<IDProperty **>(&ptr->data);
@@ -8188,6 +8193,8 @@ void RNA_def_userdef(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "Preferences", nullptr);
   RNA_def_struct_sdna(srna, "UserDef");
   RNA_def_struct_ui_text(srna, "Preferences", "Global preferences");
+  RNA_def_struct_system_idprops_func(srna, "rna_Preferences_blaya_idprops");
+  RNA_def_struct_flag(srna, STRUCT_NO_DATABLOCK_IDPROPERTIES);
 
   prop = RNA_def_property(srna, "active_section", PROP_ENUM, PROP_NONE);
   RNA_def_property_flag(prop, PROP_ENUM_NO_CONTEXT);

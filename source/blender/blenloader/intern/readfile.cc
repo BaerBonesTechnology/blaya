@@ -4175,6 +4175,9 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
     }
   }
 
+  BLO_read_struct(reader, IDProperty, &user->blaya_properties);
+  IDP_BlendDataRead(reader, &user->blaya_properties);
+
   for (bAddon &addon : user->addons) {
     BLO_read_struct(reader, IDProperty, &addon.prop);
     IDP_BlendDataRead(reader, &addon.prop);

@@ -3457,7 +3457,7 @@ class WM_OT_batch_rename(Operator):
 
 
 class WM_MT_splash_quick_setup(Menu):
-    bl_label = "Quick Setup"
+    bl_label = "Kitchen 3D Quick Setup"
 
     def draw(self, context):
         layout = self.layout
@@ -3489,7 +3489,7 @@ class WM_MT_splash_quick_setup(Menu):
         if can_import:
             layout.label(text="Create New Preferences")
         else:
-            layout.label(text="Quick Setup")
+            layout.label(text="Welcome to Kitchen 3D")
 
         split = layout.split(factor=0.20)  # Left margin.
         split.label()
@@ -3540,7 +3540,7 @@ class WM_MT_splash_quick_setup(Menu):
 
 
 class WM_MT_splash(Menu):
-    bl_label = "Splash"
+    bl_label = "Welcome to Kitchen 3D"
 
     def draw(self, context):
         layout = self.layout
