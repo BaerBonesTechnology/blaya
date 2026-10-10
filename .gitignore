@@ -1,6 +1,15 @@
 # generic files to ignore
 .*
 
+# This fork uses GitHub Actions (upstream ignores dot directories).
+!/.github/
+!/.github/workflows/
+
+# Kitchen 3D CI and local portable-build output.
+/build/
+/install/
+/dist/
+
 # python temp paths
 __pycache__/
 *.py[cod]
