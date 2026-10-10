@@ -4,7 +4,7 @@ from .mesh_preview import MeshPreview
 import bpy
 import bmesh
 import numpy as np
-from mathutils import Vector
+from .geometry_math import coordinates, transform_points, inverse_transform
 from bpy.props import BoolProperty, EnumProperty, FloatProperty
 
 
@@ -35,7 +35,7 @@ def selected_groups(bm):
 
 def circle_points(points, *, plane='BEST', center_mode='FIT', cursor=(0, 0, 0),
                   radius=0, even=True, flatten=True, influence=1, closed=True):
-    points = np.asarray(points, dtype=float)
+    points = coordinates(points, minimum=3)
     center = points.mean(axis=0)
     relative = points - center
     values, vectors = np.linalg.eigh(relative.T @ relative)
@@ -113,16 +113,14 @@ class BLAYA_OT_circularize(MeshPreview, bpy.types.Operator):
             bm.verts.index_update()
             if not any(v.select and not v.hide for v in bm.verts):
                 continue
-            if abs(obj.matrix_world.determinant()) < 1e-12:
-                raise ValueError('An edited object has zero scale; restore its scale first')
-            inverse = obj.matrix_world.inverted()
+            inverse = inverse_transform(obj.matrix_world)
             for verts, closed in selected_groups(bm):
-                result = circle_points([tuple(obj.matrix_world @ vert.co) for vert in verts],
+                result = circle_points(transform_points(obj.matrix_world, [tuple(v.co) for v in verts]),
                                        plane=self.plane, center_mode=self.center_mode,
                                        cursor=tuple(context.scene.cursor.location), radius=self.radius,
                                        even=self.even, flatten=self.flatten, influence=self.influence,
                                        closed=closed)
-                changes.append((obj, bm, verts, [inverse @ Vector(co) for co in result]))
+                changes.append((obj, bm, verts, transform_points(inverse, result)))
         return changes
 
 

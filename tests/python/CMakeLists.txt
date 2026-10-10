@@ -1987,3 +1987,28 @@ if(WITH_LINUX_OFFICIAL_RELEASE_TESTS)
   unset(extra_args)
   unset(release_root_folder)
 endif()
+
+
+# Native Kitchen 3D workflows: run the installed app with isolated preferences.
+if(TEST_PYTHON_EXE)
+  foreach(_kitchen_test IN ITEMS kitchen3d_regression blaya_circular blaya_loop_tools blaya_animation_pose)
+    add_test(NAME ${_kitchen_test}
+      COMMAND "${TEST_PYTHON_EXE}" "${TEST_PYTHON_DIR}/run_kitchen3d_test.py"
+        --blender "${TEST_BLENDER_EXE}"
+        --script "${TEST_PYTHON_DIR}/${_kitchen_test}.py"
+        --output "${TEST_OUT_DIR}/kitchen3d/${_kitchen_test}")
+    set_tests_properties(${_kitchen_test} PROPERTIES LABELS "kitchen3d" TIMEOUT 200)
+  endforeach()
+  option(WITH_KITCHEN3D_UI_TESTS "Run Kitchen 3D UI snapshots and undo tests (requires a display)" OFF)
+  if(WITH_KITCHEN3D_UI_TESTS)
+    foreach(_kitchen_test IN ITEMS kitchen3d_ui_regression kitchen3d_isolation blaya_native_editor blaya_native_smoke blaya_onion_skin)
+      add_test(NAME ${_kitchen_test}
+        COMMAND "${TEST_PYTHON_EXE}" "${TEST_PYTHON_DIR}/run_kitchen3d_test.py"
+          --blender "${TEST_BLENDER_EXE}" --ui
+          --script "${TEST_PYTHON_DIR}/${_kitchen_test}.py"
+          --output "${TEST_OUT_DIR}/kitchen3d/${_kitchen_test}")
+      set_tests_properties(${_kitchen_test} PROPERTIES LABELS "kitchen3d;ui" TIMEOUT 200 RUN_SERIAL TRUE)
+    endforeach()
+  endif()
+  unset(_kitchen_test)
+endif()

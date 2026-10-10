@@ -18,7 +18,7 @@ broadly useful improvements upstream.
 
 On a fresh Mac profile, Kitchen 3D registers its native workflows, chooses Industry
 Compatible and opens a workspace with a dedicated, resizable Kitchen 3D Tools editor
-on the left, a modeling viewport, UV editor, and the standard Properties editor
+on the left, a full modeling viewport, and the standard Properties editor
 on the right. Saved .blend files retain their
 own workspaces. Save Preferences to retain later keymap and shelf choices.
 The Kitchen 3D menu exposes workspace setup, About, official Blender downloads,
@@ -203,3 +203,86 @@ IDs, saved RNA identifiers, asset filenames, bundle identifiers, and the existin
 `Blaya` preferences directory stay stable so existing workspaces and settings
 remain compatible. Opening a legacy BLAYA workspace through the workspace
 command reuses it and updates its displayed name. The stove mark is used in the app icon, splash screen, menu, and About dialog.
+
+
+## Maintenance workflows (5.3)
+
+The Shape / Spacing tools support multiple editable meshes. Choose **Dialog**
+for numeric previews or **Drag** for viewport interaction. Drag changes radius
+(Circularize) or influence; the wheel adjusts iterations where available, or
+influence. X/Y/Z/B selects a world-axis or Best Fit circle plane. Enter or left
+click applies; Escape or right click restores the original coordinates.
+The tools preserve vertex order and topology, including live modifier stacks.
+Meshes with shape keys require **Edit Active Shape Key** opt-in; only the active
+key is edited. A changed edit mesh or active key interrupts the preview.
+
+**Surface** can project onto an external evaluated target mesh, or the original
+evaluated mesh of an object with an enabled Subdivision Surface modifier.
+The latter approximates the limit surface at the modifier's current resolution;
+it is not an analytic subdivision solver. Projection is in world space and does
+not apply modifiers. Targets are snapshotted at invocation; restart the tool
+if the target changes. Targets above one million triangles are rejected.
+
+**UV Finish** includes 5.12, 10.24 and 20.48 px/cm density presets. A preset sets
+the target value; use Set Density to scale selected islands. **Distribute
+UDIMs** places fully selected islands across tiles starting at Start UDIM,
+without changing their scale or orientation. Padding uses the texture size.
+Tiles containing partially selected or unselected islands are reserved.
+Oversized islands or layouts beyond tile 2000 are rejected before any UV moves.
+This packs UV coordinates; it does not create or paint image tiles.
+
+Onion skin samples use bulk mesh reads and vectorized transforms. Evaluated
+poses and GPU batches are reused through a least-recently-used cache capped at
+128 entries and a 128 MiB buffer estimate; each active ghost set has the same
+buffer cap and the existing one-million-triangle cap. Scene edits invalidate
+cached poses; Refresh forces resampling. File load, undo and unregister clear
+session state. BMesh edit writes remain individual vertex writes because BMesh
+has no `foreach_set`; world-space math is vectorized and each mesh is updated
+once after the transaction.
+
+Workspace switching listens for window workspace changes and checks layout
+readiness with a 30-second elapsed-time deadline. File loading and unregister
+cancel pending setup and remove callbacks.
+
+### Regression checks
+
+After building the install target, run `ctest -L kitchen3d --output-on-failure`
+from the build directory. Background tests cover math, atomic edits, shape keys,
+modal events, projection, UV placement, cache invalidation and cleanup, plus
+existing circular, loop and pose tests. Configure with
+`-DWITH_KITCHEN3D_UI_TESTS=ON` to include GUI tests (requires an active display).
+The GUI suite exercises modeling and UV Undo/Redo, every native workflow panel,
+menus, saved-file preservation and onion GPU rendering. Test logs and workflow
+screenshots are written under the build test output directory.
+
+For image comparisons, set `KITCHEN3D_SNAPSHOT_BASELINE` to a previously reviewed
+UI test output directory containing the workflow `.npz` captures. Use the same
+OS, display scale and theme. Without a reference, the suite captures artifacts,
+checks for nonblank panels and catches draw exceptions; it does not claim a
+pixel baseline comparison. Run a single suite independently with
+`python3 tests/python/run_kitchen3d_test.py --blender /path/to/executable
+--script tests/python/kitchen3d_regression.py --output /tmp/kitchen3d-tests`.
+Add `--ui` for the UI suite. Each run uses an isolated preferences directory.
+
+
+### Isolate selection
+
+Press **Ctrl-I** in the 3D Viewport, or use **Scene Tools → Isolate**, to isolate
+selected objects in Object Mode or selected vertices/edges/faces in mesh Edit
+Mode. Recall a component selection set first to isolate that set. Press again
+to restore visibility; components that were already hidden remain hidden. The
+view is not recentered. Object isolation uses viewport Local View; component
+hiding affects all views of that editable mesh, as Blender's Edit Mode does.
+Temporary per-element visibility layers allow restoration after topology edits
+or leaving Edit Mode. Isolating components inside an existing Local View keeps
+that Local View when component isolation is toggled off. Ctrl-I overrides the
+base selection-invert shortcut in Object and Mesh modes when Kitchen 3D
+shortcuts are enabled. The UV Editor keeps its existing binding.
+
+
+### Startup layout
+
+New/factory scenes open with the tools panel and a full modeling viewport.
+The UV editor is no longer split open at startup. Choose the **UV** workflow
+and click **Open UV Editor** to add it beside the model when needed. Saved
+workspaces retain their layouts, including any UV editors you chose to keep.

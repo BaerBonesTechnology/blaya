@@ -4,6 +4,7 @@ import bpy
 import bmesh
 from bpy.props import IntProperty, FloatProperty, BoolProperty, PointerProperty, CollectionProperty, EnumProperty
 from mathutils import Vector
+from .geometry_math import pack_tiles
 
 
 def selected_face(context, face):
@@ -45,6 +46,7 @@ class BLAYA_UVSettings(bpy.types.PropertyGroup):
     resolution: IntProperty(name='Texture', default=2048, min=64, max=32768, description='Square texture resolution in pixels')
     padding: IntProperty(name='Padding', default=8, min=0, max=256, description='Pack margin in pixels at the chosen texture resolution')
     density: FloatProperty(name='px / meter', default=512, min=.01, max=100000, description='Target texel density in pixels per meter; respects object scale and scene unit scale')
+    start_tile: IntProperty(name='Start UDIM', default=1001, min=1001, max=2000)
     pack_scale: BoolProperty(name='Fit Tile', default=False, description='Allow packing to rescale islands to fit. Disable to preserve texel density')
 
 
@@ -63,6 +65,7 @@ class BLAYA_OT_uv_action(bpy.types.Operator):
         ('OVERLAP','Overlap','Select overlapping UV faces using Blender overlap selection'),
         ('OUTSIDE','Outside Tile','Select faces with any UV corner outside the 0–1 tile. UDIM tiles may be intentional'),
         ('DENSITY','Set Density','Scale fully selected UV islands to the specified pixels per meter; partial islands are skipped'),
+        ('UDIM','Distribute UDIMs','Pack fully selected islands across UDIM tiles without changing density; occupied tiles are skipped'),
         ('PACK','Pack','Pack selected UV islands using pixel padding. Fit Tile changes density when enabled'),
     )])
 
@@ -85,6 +88,10 @@ class BLAYA_OT_uv_action(bpy.types.Operator):
             if self.action in {'HORIZONTAL','VERTICAL'}:
                 return bpy.ops.uv.align(axis='ALIGN_Y' if self.action=='HORIZONTAL' else 'ALIGN_X')
             if self.action=='OVERLAP': return bpy.ops.uv.select_overlap(extend=False)
+            if self.action=='UDIM':
+                count, skipped = distribute_udims(context, s)
+                self.report({'INFO'}, f'Distributed {count} islands; skipped {skipped} partial islands')
+                return {'FINISHED'} if count else {'CANCELLED'}
             if self.action=='PACK':
                 return bpy.ops.uv.pack_islands('EXEC_DEFAULT',margin_method='FRACTION',margin=s.padding/s.resolution,
                     scale=s.pack_scale,rotate=True,udim_source='ACTIVE_UDIM')
@@ -127,8 +134,53 @@ class BLAYA_OT_uv_action(bpy.types.Operator):
                     bmesh.update_edit_mesh(obj.data,loop_triangles=False,destructive=False)
                 self.report({'INFO'},f'Scaled {changed} islands; skipped {skipped} partial or collapsed islands')
             return {'FINISHED'}
-        except RuntimeError as error:
+        except (RuntimeError, ValueError) as error:
             self.report({'WARNING'},str(error));return {'CANCELLED'}
+
+
+def distribute_udims(context, settings):
+    islands, occupied, skipped = [], set(), 0
+    for obj in context.objects_in_mode_unique_data:
+        bm = bmesh.from_edit_mesh(obj.data)
+        layer = bm.loops.layers.uv.active
+        if layer is None:
+            continue
+        for island in uv_islands(bm, layer):
+            loops = [loop for face in island for loop in face.loops]
+            low = Vector((min(l[layer].uv.x for l in loops), min(l[layer].uv.y for l in loops)))
+            high = Vector((max(l[layer].uv.x for l in loops), max(l[layer].uv.y for l in loops)))
+            selected = [f for f in island if selected_face(context, f)]
+            if len(selected) == len(island):
+                islands.append((obj, loops, layer, low, high-low))
+            else:
+                skipped += bool(selected)
+                for y in range(max(0, math.floor(low.y)), min(99, math.floor(high.y-1e-9))+1):
+                    for x in range(max(0, math.floor(low.x)), min(9, math.floor(high.x-1e-9))+1):
+                        occupied.add(1001+x+10*y)
+    places = pack_tiles([tuple(i[4]) for i in islands], settings.start_tile,
+                        settings.padding/settings.resolution, occupied)
+    # Compute every placement before modifying any UVs.
+    touched = set()
+    for (obj, loops, layer, low, size), position in zip(islands, places):
+        delta = Vector(position)-low
+        for loop in loops:
+            loop[layer].uv += delta
+        touched.add(obj)
+    for obj in touched:
+        bmesh.update_edit_mesh(obj.data, loop_triangles=False, destructive=False)
+    return len(islands), skipped
+
+
+class BLAYA_OT_uv_density_preset(bpy.types.Operator):
+    bl_idname = 'blaya.uv_density_preset'
+    bl_label = 'Texel Density Preset'
+    bl_description = 'Set pixels per centimeter; use Set Density to apply to selected islands'
+    bl_options = {'REGISTER', 'UNDO'}
+    density: FloatProperty(default=5.12, min=.01)
+
+    def execute(self, context):
+        context.scene.blaya_uv_settings.density = self.density * 100
+        return {'FINISHED'}
 
 
 class BLAYA_MaterialBackup(bpy.types.PropertyGroup):
@@ -203,14 +255,19 @@ class BLAYA_PT_uv_finish(bpy.types.Panel):
         draw_uv(l,context)
         buttons(l,context,[('CUT','Cut','SCULPTMODE_HLT'),('SEW','Sew','AUTOMERGE_ON'),('RELAX','Relax','MOD_SMOOTH'),('PIN','Pin','PINNED'),('UNPIN','Unpin','UNPINNED'),('HORIZONTAL','Horizontal','TRIA_RIGHT'),('VERTICAL','Vertical','TRIA_UP'),('OVERLAP','Overlap','SELECT_INTERSECT'),('OUTSIDE','Outside','SELECT_DIFFERENCE')])
         l.prop(s,'resolution');l.prop(s,'density')
+        row=l.row(align=True)
+        for density in (5.12, 10.24, 20.48):
+            row.operator('blaya.uv_density_preset', text=f'{density:g} px/cm').density=density
         buttons(l,context,[('DENSITY','Set Density','UV_SYNC_SELECT')])
         row=l.row(align=True);row.prop(s,'padding');row.prop(s,'pack_scale')
         buttons(l,context,[('PACK','Pack','UV_ISLANDSEL')])
+        l.prop(s,'start_tile')
+        buttons(l,context,[('UDIM','Distribute UDIMs','UV_ISLANDSEL')])
         if any(m.blaya_checker_active for m in bpy.data.meshes):l.label(text='Checker preview active',icon='TEXTURE')
         row=l.row(align=True);row.operator('blaya.checker_material',text='Preview',icon='TEXTURE');row.operator('blaya.checker_material',text='Restore',icon='LOOP_BACK').restore=True
 
 
-CLASSES=(BLAYA_UVSettings,BLAYA_MaterialBackup,BLAYA_OT_uv_action,BLAYA_OT_checker_material,BLAYA_PT_uv_finish)
+CLASSES=(BLAYA_OT_uv_density_preset,BLAYA_UVSettings,BLAYA_MaterialBackup,BLAYA_OT_uv_action,BLAYA_OT_checker_material,BLAYA_PT_uv_finish)
 def register():
     for cls in CLASSES:bpy.utils.register_class(cls)
     bpy.types.Scene.blaya_uv_settings=PointerProperty(type=BLAYA_UVSettings)

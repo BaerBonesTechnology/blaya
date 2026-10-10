@@ -1,5 +1,7 @@
 """GUI smoke test for all workflow panels and cross-editor tool routing."""
 import json
+import os
+import tempfile
 import traceback
 from pathlib import Path
 import bpy
@@ -35,6 +37,9 @@ def tick():
         if workspace.PENDING or tools is None:
             tries += 1
             assert tries < 50, 'Workspace did not finish'
+            return .25
+        if step == 0 and not any(a.ui_type == 'UV' for a in bpy.context.screen.areas):
+            assert bpy.ops.blaya.open_uv_editor() == {'FINISHED'}
             return .25
         if step < len(native_editor.WORKFLOWS):
             tools.spaces.active.blaya_workflow = native_editor.WORKFLOWS[step][0]
@@ -75,7 +80,9 @@ def tick():
         tools.spaces.active.blaya_workflow = 'MODEL'
         tools.tag_redraw()
         bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
-        bpy.ops.screen.screenshot(filepath='/tmp/blaya-native-editor.png')
+        output=Path(os.environ.get('KITCHEN3D_TEST_OUTPUT',tempfile.gettempdir()))
+        output.mkdir(parents=True,exist_ok=True)
+        bpy.ops.screen.screenshot(filepath=str(output/'kitchen3d-native-editor.png'))
         print('PASS: all workflow panels, Model freeze and UV unwrap/pin routed from Tools editor', flush=True)
     except Exception:
         traceback.print_exc()

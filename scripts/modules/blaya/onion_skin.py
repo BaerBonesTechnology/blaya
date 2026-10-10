@@ -1,5 +1,8 @@
 """Session-only evaluated mesh ghosts; never add scene objects or render geometry."""
 import bpy
+import numpy as np
+from collections import OrderedDict
+from .geometry_math import transform_points
 from bpy.app.handlers import persistent
 from bpy.props import IntProperty, FloatProperty, FloatVectorProperty, PointerProperty
 
@@ -8,6 +11,52 @@ GREEN = (0.12, 1.0, 0.32)
 HANDLE = None
 STATE = {}
 MAX_TRIANGLES = 1_000_000
+MAX_CACHE_BYTES = 128 * 1024 * 1024
+MAX_CACHE_ENTRIES = 128
+CACHE = OrderedDict()
+CACHE_BYTES = 0
+SAMPLING = False
+REVISION = 0
+
+
+def invalidate():
+    global CACHE_BYTES, REVISION
+    CACHE.clear()
+    CACHE_BYTES = 0
+    REVISION += 1
+
+
+def cache_put(key, item):
+    global CACHE_BYTES
+    size = sum(item[k].nbytes for k in ('vertices', 'triangles', 'edges'))
+    # Allow another copy for GPU buffers when a cached pose has been drawn.
+    size *= 2
+    if size > MAX_CACHE_BYTES:
+        return
+    previous = CACHE.pop(key, None)
+    if previous is not None:
+        CACHE_BYTES -= previous[1]
+    while CACHE and (CACHE_BYTES + size > MAX_CACHE_BYTES or len(CACHE) >= MAX_CACHE_ENTRIES):
+        _, (_, removed) = CACHE.popitem(last=False)
+        CACHE_BYTES -= removed
+    CACHE[key] = (item, size)
+    CACHE_BYTES += size
+
+
+@persistent
+def invalidate_updates(scene, depsgraph):
+    if SAMPLING or not active(scene):
+        return
+    time = (scene.frame_current, scene.frame_subframe)
+    if STATE.get('observed_time') != time:
+        STATE['observed_time'] = time
+        return
+    # A stable-frame edit can affect drivers, constraints, rigs, or geometry.
+    # Invalidate conservatively rather than displaying an obsolete pose.
+    if depsgraph.updates:
+        invalidate()
+        STATE['signature'] = None
+
 
 
 class BLAYA_OnionSettings(bpy.types.PropertyGroup):
@@ -55,42 +104,65 @@ def selected_meshes(context):
             and (obj in selected or obj.find_armature() in rigs)]
 
 
-def sample(context, objects):
-    """Snapshot world-space evaluated triangles, restoring frame even on failure."""
+def sample(context, objects, use_cache=False):
+    """Snapshot evaluated arrays; cache use is explicit for controlled refreshes."""
+    global SAMPLING
     scene = context.scene
     s = scene.blaya_onion
     frame, subframe = scene.frame_current, scene.frame_subframe
-    samples = []
-    total = 0
+    samples, total, active_bytes = [], 0, 0
+    SAMPLING = True
     try:
         for direction, count in ((-1, s.before), (1, s.after)):
             for distance in range(1, count + 1):
                 target = frame + direction * distance * s.step
                 if not scene.frame_start <= target <= scene.frame_end:
                     continue
-                scene.frame_set(target, subframe=subframe)
-                depsgraph = context.evaluated_depsgraph_get()
+                depsgraph = None
                 for obj in objects:
-                    evaluated = obj.evaluated_get(depsgraph)
-                    mesh = evaluated.to_mesh()
-                    try:
-                        if mesh is None:
-                            continue
-                        mesh.calc_loop_triangles()
-                        total += len(mesh.loop_triangles)
-                        if total > MAX_TRIANGLES:
-                            raise RuntimeError('Ghost geometry exceeds 1 million triangles; reduce poses or mesh complexity')
-                        matrix = evaluated.matrix_world.copy()
-                        vertices = [tuple(matrix @ vertex.co) for vertex in mesh.vertices]
-                        triangles = [tuple(tri.vertices) for tri in mesh.loop_triangles]
-                        edges = [tuple(edge.vertices) for edge in mesh.edges]
-                        samples.append(dict(object=obj, frame=target, direction=direction,
-                                            distance=distance, vertices=vertices,
-                                            triangles=triangles, edges=edges, batches=None))
-                    finally:
-                        evaluated.to_mesh_clear()
+                    key = (scene.as_pointer(), context.view_layer.as_pointer(), obj.as_pointer(), target, subframe, REVISION)
+                    cached = CACHE.get(key) if use_cache else None
+                    if cached is not None:
+                        item = cached[0]
+                        CACHE.move_to_end(key)
+                    else:
+                        if depsgraph is None:
+                            scene.frame_set(target, subframe=subframe)
+                            depsgraph = context.evaluated_depsgraph_get()
+                        evaluated = obj.evaluated_get(depsgraph)
+                        mesh = evaluated.to_mesh()
+                        try:
+                            if mesh is None:
+                                continue
+                            mesh.calc_loop_triangles()
+                            if total + len(mesh.loop_triangles) > MAX_TRIANGLES:
+                                raise RuntimeError('Ghost geometry exceeds 1 million triangles; reduce poses or mesh complexity')
+                            vertices = np.empty(len(mesh.vertices) * 3, dtype=np.float32)
+                            mesh.vertices.foreach_get('co', vertices)
+                            vertices = transform_points(evaluated.matrix_world, vertices.reshape(-1, 3)).astype(np.float32)
+                            triangles = np.empty(len(mesh.loop_triangles) * 3, dtype=np.int32)
+                            mesh.loop_triangles.foreach_get('vertices', triangles)
+                            edges = np.empty(len(mesh.edges) * 2, dtype=np.int32)
+                            mesh.edges.foreach_get('vertices', edges)
+                            item = dict(object=obj, frame=target, vertices=vertices,
+                                        triangles=triangles.reshape(-1, 3), edges=edges.reshape(-1, 2), batches=None)
+                            if use_cache:
+                                cache_put(key, item)
+                        finally:
+                            evaluated.to_mesh_clear()
+                    active_bytes += 2 * sum(item[k].nbytes for k in ('vertices', 'triangles', 'edges'))
+                    if active_bytes > MAX_CACHE_BYTES:
+                        raise RuntimeError('Ghost geometry exceeds the memory budget; reduce poses or mesh complexity')
+                    total += len(item['triangles'])
+                    if total > MAX_TRIANGLES:
+                        raise RuntimeError('Ghost geometry exceeds 1 million triangles; reduce poses or mesh complexity')
+                    # Distance/color belong to this view; geometry/GPU batches belong to a pose.
+                    samples.append(dict(item, direction=direction, distance=distance, cached=item))
     finally:
-        scene.frame_set(frame, subframe=subframe)
+        if scene.frame_current != frame or scene.frame_subframe != subframe:
+            scene.frame_set(frame, subframe=subframe)
+        STATE['observed_time'] = (frame, subframe)
+        SAMPLING = False
     return samples
 
 
@@ -98,7 +170,7 @@ def refresh(context):
     objects = [obj for obj in STATE['objects'] if obj.name in context.scene.objects]
     if not objects:
         raise RuntimeError('Ghost source meshes are no longer in the scene')
-    STATE['samples'] = sample(context, objects)
+    STATE['samples'] = sample(context, objects, use_cache=True)
     STATE['signature'] = signature(context.scene)
     STATE['pending'] = None
     redraw()
@@ -106,6 +178,7 @@ def refresh(context):
 
 @persistent
 def clear(*args):
+    invalidate()
     STATE.clear()
     redraw()
 
@@ -130,10 +203,15 @@ def draw():
             obj = item['object']
             if not obj.visible_get(view_layer=context.view_layer, viewport=context.space_data):
                 continue
-            if item['batches'] is None:
-                item['batches'] = (
+            cached = item.get('cached', item)
+            if not len(item['vertices']):
+                cached['batches'] = item['batches'] = ()
+                continue
+            if cached['batches'] is None:
+                cached['batches'] = (
                     batch_for_shader(shader, 'TRIS', {'pos': item['vertices']}, indices=item['triangles']),
                     batch_for_shader(shader, 'LINES', {'pos': item['vertices']}, indices=item['edges']))
+            item['batches'] = cached['batches']
             settings = context.scene.blaya_onion
             color = settings.before_color if item['direction'] < 0 else settings.after_color
             alpha = context.scene.blaya_onion.opacity / item['distance'] ** .5
@@ -141,7 +219,7 @@ def draw():
             item['batches'][0].draw(shader)
             shader.uniform_float('color', (*color, min(.85, alpha * 2)))
             item['batches'][1].draw(shader)
-    except (ReferenceError, RuntimeError):
+    except (ReferenceError, RuntimeError, ValueError):
         clear()
     finally:
         gpu.state.blend_set(blend)
@@ -173,7 +251,7 @@ def tick():
             else:
                 with bpy.context.temp_override(window=window):
                     refresh(bpy.context)
-    except (ReferenceError, RuntimeError) as error:
+    except (ReferenceError, RuntimeError, ValueError) as error:
         print('Kitchen 3D onion skin:', error)
         clear()
     return .2
@@ -202,7 +280,7 @@ class BLAYA_OT_onion_skin(bpy.types.Operator):
                      objects=objects, samples=[])
         try:
             refresh(context)
-        except (RuntimeError, ReferenceError) as error:
+        except (RuntimeError, ReferenceError, ValueError) as error:
             clear()
             self.report({'ERROR'}, str(error))
             return {'CANCELLED'}
@@ -220,8 +298,9 @@ class BLAYA_OT_onion_refresh(bpy.types.Operator):
 
     def execute(self, context):
         try:
+            invalidate()
             refresh(context)
-        except (RuntimeError, ReferenceError) as error:
+        except (RuntimeError, ReferenceError, ValueError) as error:
             clear()
             self.report({'ERROR'}, str(error))
             return {'CANCELLED'}
@@ -239,6 +318,7 @@ def register():
     if not bpy.app.background:
         HANDLE = bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_VIEW')
         bpy.app.timers.register(tick, first_interval=.2, persistent=True)
+    bpy.app.handlers.depsgraph_update_post.append(invalidate_updates)
     for handlers in (bpy.app.handlers.load_pre, bpy.app.handlers.undo_pre, bpy.app.handlers.redo_pre):
         handlers.append(clear)
 
@@ -246,6 +326,8 @@ def register():
 def unregister():
     global HANDLE
     clear()
+    if invalidate_updates in bpy.app.handlers.depsgraph_update_post:
+        bpy.app.handlers.depsgraph_update_post.remove(invalidate_updates)
     if HANDLE is not None:
         bpy.types.SpaceView3D.draw_handler_remove(HANDLE, 'WINDOW')
         HANDLE = None

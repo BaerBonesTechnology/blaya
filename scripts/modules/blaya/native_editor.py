@@ -164,12 +164,16 @@ def make_panel(source, workflow, order):
     source_poll = source.__dict__.get('poll')
 
     def poll(cls, context):
-        return context.space_data.blaya_workflow == workflow
+        return (context.space_data.blaya_workflow == workflow
+                and (workflow != 'UV' or order == 0 or target_area(context, workflow) is not None))
 
     def draw(self, context):
         target = target_area(context, workflow)
         if target is None:
-            self.layout.label(text='Open a UV Editor' if workflow == 'UV' else 'Open a 3D View', icon='INFO')
+            if workflow == 'UV':
+                self.layout.operator('blaya.open_uv_editor', icon='UV')
+            else:
+                self.layout.label(text='Open a 3D View', icon='INFO')
             return
         region = context.region
         left = region.view2d.region_to_view(0, 0)[0]

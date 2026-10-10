@@ -1,11 +1,17 @@
 """Disposable GUI regression: --factory-startup --python this_file."""
 import bpy
+import numpy as np
 import json
+import os
+import tempfile
+from pathlib import Path
 import traceback
+import time
 from mathutils import Quaternion
 from blaya import onion_skin as onion, workspace, native_editor
 
 phase = 0
+deadline = 0
 errors = []
 for panel in native_editor.PANELS:
     if '_animation_onion' in panel.__name__:
@@ -24,7 +30,7 @@ def action(name):
         assert bpy.ops.blaya.editor_action(operator_id=name, arguments=json.dumps({}), workflow='ANIMATION') == {'FINISHED'}
 
 def tick():
-    global phase
+    global phase, deadline
     try:
         if workspace.PENDING:
             return .3
@@ -72,10 +78,13 @@ def tick():
             assert len(bpy.data.meshes) == before[1]
             scene.frame_set(11)
             phase = 2
-            return 1.2
+            deadline = time.monotonic() + 15
+            return .2
         if phase == 2:
             scene = bpy.context.scene
-            assert onion.STATE['signature'] == onion.signature(scene), onion.STATE['signature']
+            if onion.STATE.get('signature') != onion.signature(scene):
+                assert time.monotonic() < deadline, 'Ghost refresh did not settle after scrubbing'
+                return .2
             assert onion.STATE['samples'][0]['frame'] == 8
             action('blaya.onion_refresh')
             action('blaya.onion_skin')
@@ -113,11 +122,29 @@ def tick():
             view.spaces.active.region_3d.view_rotation = Quaternion((1, 0, 0), 1.35)
             view.spaces.active.overlay.show_floor = False
             phase = 3
-            return .7
+            deadline = time.monotonic() + 15
+            return .2
         if phase == 3:
             assert not errors, errors
-            assert onion.STATE and all(s['batches'] is not None for s in onion.STATE['samples']), 'GPU draw failed'
-            bpy.ops.screen.screenshot(filepath='/tmp/blaya-onion-preview.png')
+            if not onion.STATE or not all(s['batches'] is not None for s in onion.STATE['samples']):
+                assert time.monotonic() < deadline, 'GPU draw failed'
+                return .2
+            empty = dict(object=onion.STATE['objects'][0], vertices=np.empty((0,3),np.float32),
+                         triangles=np.empty((0,3),np.int32), edges=np.empty((0,2),np.int32),
+                         batches=None, direction=-1, distance=1)
+            onion.STATE['samples'].append(empty)
+            onion.redraw()
+            bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=3)
+            assert empty['batches'] == (), 'Empty evaluated geometry must skip GPU construction'
+            output=Path(os.environ.get('KITCHEN3D_TEST_OUTPUT',tempfile.gettempdir()))
+            output.mkdir(parents=True,exist_ok=True)
+            bpy.ops.screen.screenshot(filepath=str(output/'kitchen3d-onion-preview.png'))
+            onion.unregister()
+            assert onion.HANDLE is None and not onion.STATE and not onion.CACHE
+            assert not bpy.app.timers.is_registered(onion.tick)
+            assert onion.invalidate_updates not in bpy.app.handlers.depsgraph_update_post
+            onion.register()
+            assert onion.HANDLE is not None and bpy.app.timers.is_registered(onion.tick)
             print('PASS: onion GPU draw, panels, evaluated geometry/rig, frame restoration, no scene objects, complexity guard, scrub refresh, toggle and lifecycle cleanup', flush=True)
     except Exception:
         traceback.print_exc()

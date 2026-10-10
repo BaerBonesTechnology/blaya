@@ -29,6 +29,7 @@ def tick():
    assert f'/Blaya/{bpy.app.version[0]}.{bpy.app.version[1]}' in bpy.utils.resource_path('USER')
    tools = [a for a in bpy.context.screen.areas if a.ui_type == 'BLAYA_TOOLS']
    assert len(tools) == 1
+   assert not any(a.ui_type == 'UV' for a in bpy.context.screen.areas), 'UV editor should open on demand'
    assert tools[0].x == min(a.x for a in bpy.context.screen.areas)
    assert any(a.type == 'PROPERTIES' and a.ui_type != 'BLAYA_TOOLS' for a in bpy.context.screen.areas)
    from blaya import native_editor

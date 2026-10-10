@@ -151,7 +151,7 @@ def draw_keymap_status(layout, context):
     active = context.window_manager.keyconfigs.active
     row = layout.row()
     row.label(text=active.name.replace('_', ' ') if active else 'No keymap')
-    hint(row, 'Industry Compatible provides navigation and double-click loop selection. Kitchen 3D adds Shift-Q tools, Ctrl-Space lookup and F8–F11. Save Preferences to retain setup.')
+    hint(row, 'Industry Compatible provides navigation and double-click loop selection. Kitchen 3D adds Shift-Q tools, Ctrl-Space lookup, Ctrl-I isolation and F8–F11. Save Preferences to retain setup.')
     if not industry_active(context):
         layout.operator('blaya.use_industry_keymap', text='Use Industry Compatible')
 
@@ -209,6 +209,7 @@ def install_keys():
         if not industry_active():
             for key, tool in [('Q', 'builtin.select_box'), ('W', 'builtin.move'), ('E', 'builtin.rotate'), ('R', 'builtin.scale')]:
                 bind(km, 'wm.tool_set_by_id', key).properties.name = tool
+        bind(km, 'blaya.isolate_selection', 'I', ctrl=True)
         for key, mode in [('F8', 'OBJECT'), ('F9', 'VERT'), ('F10', 'EDGE'), ('F11', 'FACE')]:
             bind(km, COMPONENT_OPERATORS[mode], key)
 
@@ -237,7 +238,7 @@ class BLAYA_ShelfItem(bpy.types.PropertyGroup):
 class BLAYA_Preferences(bpy.types.PropertyGroup):
     autosave_initialized: BoolProperty(update=preferences_updated, default=False, options={'HIDDEN'})
     native_initialized: BoolProperty(update=preferences_updated, default=False, options={'HIDDEN'})
-    maya_keys: BoolProperty(name='Enable Shortcuts', description='Enable viewport shortcuts. Shift-Q opens tools, Ctrl-Space opens the learning map, and F8–F11 select component modes. Disable to restore base bindings.', default=True, update=keys_updated)
+    maya_keys: BoolProperty(name='Enable Shortcuts', description='Enable viewport shortcuts. Shift-Q opens tools, Ctrl-Space opens the learning map, Ctrl-I isolates selection, and F8–F11 select component modes. Disable to restore base bindings.', default=True, update=keys_updated)
     tool_display: EnumProperty(update=preferences_updated, name='Tool Display', items=[
         ('ICONS', 'Icons', 'Compact symbols; hover for tool names and descriptions'),
         ('BOTH', 'Icons + Text', 'Show symbols with short labels'),

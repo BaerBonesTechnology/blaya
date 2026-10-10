@@ -124,6 +124,17 @@ def draw(layout, context):
         box = layout.box()
         box.label(text=title)
         draw_tool_grid(box, keys)
+        if title == 'Shape / Spacing':
+            settings = context.scene.blaya_mesh_settings
+            box.prop(settings, 'interaction', expand=True)
+            box.prop(settings, 'surface')
+            if any(m.show_viewport and m.type in {'MIRROR', 'BOOLEAN', 'ARRAY', 'REMESH', 'NODES'}
+                   for obj in context.objects_in_mode_unique_data for m in obj.modifiers):
+                box.label(text='Edits affect the base mesh; modifiers stay live', icon='INFO')
+            if settings.surface == 'TARGET':
+                box.prop(settings, 'target')
+            box.prop(settings, 'allow_shape_keys')
+            hint(box, 'Drag mode: move the mouse to change radius or influence; wheel changes iterations or strength; X/Y/Z/B chooses the circularize plane. Enter applies, Esc restores. Surface projection uses the original evaluated surface. Modifiers stay unapplied; shape-key editing requires explicit opt-in.')
         if title == 'Normals':
             from .finishing import draw_shading
             draw_shading(box,context)
@@ -142,10 +153,14 @@ def draw(layout, context):
 
 CLASSES = (BLAYA_OT_mirror_setup, BLAYA_OT_symmetrize)
 def register():
+    from . import mesh_preview
+    mesh_preview.register()
     circular.register()
     loop_tools.register()
     for cls in CLASSES: bpy.utils.register_class(cls)
 def unregister():
     loop_tools.unregister()
     circular.unregister()
+    from . import mesh_preview
+    mesh_preview.unregister()
     for cls in reversed(CLASSES): bpy.utils.unregister_class(cls)

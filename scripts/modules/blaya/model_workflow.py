@@ -2,6 +2,7 @@
 import bpy,bmesh,json,hashlib
 from bpy.props import StringProperty,EnumProperty,PointerProperty
 from mathutils import Vector
+from . import isolation
 
 
 def topology_signature(bm):
@@ -32,7 +33,7 @@ ACTIONS=[
  ('GROUP','Group','Parent selected root objects to a new Empty while preserving world transforms','OUTLINER_OB_EMPTY'),
  ('PARENT','Parent','Parent selected objects to the active object while preserving world transforms','CON_CHILDOF'),
  ('UNPARENT','Unparent','Clear parents while preserving world transforms','UNLINKED'),
- ('ISOLATE','Isolate','Toggle local view for selected objects in this viewport','HIDE_OFF'),
+ ('ISOLATE','Isolate','Toggle isolation of selected objects or mesh components; Ctrl-I restores previous visibility','HIDE_OFF'),
  ('COLLECTION','Collection','Move selected objects to a collection','OUTLINER_COLLECTION'),
 ]
 
@@ -76,9 +77,14 @@ class BLAYA_OT_workflow(bpy.types.Operator):
                         records.append((obj,bm,record))
                 for obj,bm,record in records:
                     context.tool_settings.mesh_select_mode=record['mode']
+                    # Deselect first: deselecting a face/edge also clears its vertices.
+                    # Restore positive flags afterward so vertex-only sets survive.
+                    for seq in (bm.faces,bm.edges,bm.verts):
+                        for e in seq:e.select_set(False)
                     for seq,indices in zip((bm.verts,bm.edges,bm.faces),record['selection']):
                         chosen=set(indices)
-                        for e in seq:e.select_set(e.index in chosen and not e.hide)
+                        for e in seq:
+                            if e.index in chosen and not e.hide:e.select_set(True)
                     bm.select_history.clear();bm.select_flush_mode();bmesh.update_edit_mesh(obj.data,loop_triangles=False,destructive=False)
                 return {'FINISHED'}
             if self.action=='TEMP_PIVOT':
@@ -93,7 +99,7 @@ class BLAYA_OT_workflow(bpy.types.Operator):
                     saved=json.loads(s.pivot_backup);context.scene.cursor.location=saved['location'];context.scene.cursor.rotation_mode=saved['mode'];context.scene.cursor.rotation_euler=saved['rotation']
                     context.scene.tool_settings.transform_pivot_point=saved['pivot'];s.pivot_backup=''
                 return {'FINISHED'}
-            if self.action=='ISOLATE':return bpy.ops.view3d.localview(frame_selected=True)
+            if self.action=='ISOLATE':return bpy.ops.blaya.isolate_selection()
             if context.mode!='OBJECT':self.report({'WARNING'},'Object Mode required');return {'CANCELLED'}
             if self.action=='PARENT':return bpy.ops.object.parent_set(type='OBJECT',keep_transform=True)
             if self.action=='UNPARENT':return bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
@@ -204,9 +210,11 @@ class BLAYA_MT_context_pie(bpy.types.Menu):
 
 CLASSES=(BLAYA_WorkflowSettings,BLAYA_OT_workflow,BLAYA_OT_snap,BLAYA_OT_rename,BLAYA_PT_selection,BLAYA_PT_pivot,BLAYA_PT_scene,BLAYA_MT_context_pie)
 def register():
+    isolation.register()
     for cls in CLASSES:bpy.utils.register_class(cls)
     bpy.types.Scene.blaya_workflow=PointerProperty(type=BLAYA_WorkflowSettings)
     bpy.types.Mesh.blaya_selection_sets=StringProperty(default='{}')
 def unregister():
+    isolation.unregister()
     del bpy.types.Mesh.blaya_selection_sets;del bpy.types.Scene.blaya_workflow
     for cls in reversed(CLASSES):bpy.utils.unregister_class(cls)

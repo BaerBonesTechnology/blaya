@@ -1,7 +1,11 @@
 """A user-owned modeling/UV workspace, built without altering scene data."""
 import bpy
+import time
+from bpy.app.handlers import persistent
 
 PENDING = None
+OWNER = object()
+SWITCH_TIMEOUT = 30.0
 
 
 def split_area(window, area, factor, direction='VERTICAL'):
@@ -55,10 +59,10 @@ def build_pending():
         if window not in bpy.context.window_manager.windows[:]:
             PENDING = None
             return None
-        job['tries'] += 1
+        deadline = job.setdefault('deadline', time.monotonic() + SWITCH_TIMEOUT)
         # Workspace assignment is queued by Blender and takes effect next tick.
         if window.workspace != job['expected']:
-            if job['tries'] > 30:
+            if time.monotonic() > deadline:
                 raise RuntimeError('Workspace switch did not complete; try again')
             return .1
         if job['phase'] == 'duplicate':
@@ -70,8 +74,12 @@ def build_pending():
                 raise RuntimeError('Could not duplicate the source workspace')
             target = created[0]
             target.name = 'Kitchen 3D Animation' if job.get('kind') == 'ANIMATION' else 'Kitchen 3D'
-            job.update(expected=target, phase='configure', tries=0)
+            job.update(expected=target, phase='configure', deadline=time.monotonic() + SWITCH_TIMEOUT)
             window.workspace = target
+            return .1
+        if not all(a.width > 1 and a.height > 1 for a in window.screen.areas):
+            if time.monotonic() > deadline:
+                raise RuntimeError('Workspace layout is not ready; try again')
             return .1
         if job['phase'] == 'configure':
             job['editors'] = configure(window)
@@ -87,6 +95,7 @@ def build_pending():
             for area in window.screen.areas:
                 if area.type == 'IMAGE_EDITOR':
                     area.spaces.active.show_region_ui = False
+            bpy.context.window_manager.blaya_workspace_error = ''
             PENDING = None
             return None
         if job['phase'] == 'finish':
@@ -97,9 +106,12 @@ def build_pending():
                 job['editors'] = split_area(window, model, .38, 'HORIZONTAL')
                 job['phase'] = 'animation_rows'
                 return .1
-            job['editors'] = split_area(window, model, .67)
-            job['phase'] = 'finish_views'
-            return .1
+            window.workspace['blaya_workspace_version'] = 2
+            for area in window.screen.areas:
+                area.tag_redraw()
+            bpy.context.window_manager.blaya_workspace_error = ''
+            PENDING = None
+            return None
         if job['phase'] == 'animation_rows':
             lower, viewport = sorted(job['editors'], key=lambda a: a.y)
             viewport.type = 'VIEW_3D'
@@ -139,7 +151,7 @@ class BLAYA_OT_workspace(bpy.types.Operator):
     bl_idname = 'blaya.workspace'
     bl_label = 'Create / Open Kitchen 3D Workspace'
     kind: bpy.props.EnumProperty(items=[('MODEL', 'Modeling', ''), ('ANIMATION', 'Animation', '')], default='MODEL')
-    bl_description = 'Open the Kitchen 3D workspace, or create one from Layout with a dedicated left tools editor, modeling viewport and UV editor. Existing workspaces and scene data are preserved. Save your blend file to retain the workspace'
+    bl_description = 'Open the Kitchen 3D workspace, or create one from Layout with a dedicated left tools editor and full modeling viewport. Open UV editing when needed. Existing workspaces and scene data are preserved. Save your blend file to retain the workspace'
 
     @classmethod
     def poll(cls, context):
@@ -158,15 +170,47 @@ class BLAYA_OT_workspace(bpy.types.Operator):
             context.window.workspace = existing
             if existing.get('blaya_workspace_version', 0) < 2:
                 PENDING = {'window': context.window, 'expected': existing,
-                           'phase': 'dock_existing', 'tries': 0}
+                           'phase': 'dock_existing'}
                 bpy.app.timers.register(build_pending, first_interval=.1)
             return {'FINISHED'}
         source = bpy.data.workspaces.get('Layout') or context.window.workspace
         context.window_manager.blaya_workspace_error = ''
-        PENDING = {'window': context.window, 'expected': source, 'phase': 'duplicate', 'tries': 0, 'kind': self.kind}
+        PENDING = {'window': context.window, 'expected': source, 'phase': 'duplicate', 'kind': self.kind}
         context.window.workspace = source
         bpy.app.timers.register(build_pending, first_interval=.1)
-        self.report({'INFO'}, 'Creating animation workspace' if self.kind == 'ANIMATION' else 'Creating tools, modeling and UV workspace')
+        self.report({'INFO'}, 'Creating animation workspace' if self.kind == 'ANIMATION' else 'Creating tools and modeling workspace')
+        return {'FINISHED'}
+
+
+class BLAYA_OT_open_uv_editor(bpy.types.Operator):
+    bl_idname = 'blaya.open_uv_editor'
+    bl_label = 'Open UV Editor'
+    bl_description = 'Open a UV editor beside the modeling viewport in this workspace'
+
+    @classmethod
+    def poll(cls, context):
+        return context.window is not None and PENDING is None and not bpy.app.background
+
+    def execute(self, context):
+        global PENDING
+        if any(a.ui_type == 'UV' for a in context.screen.areas):
+            return {'FINISHED'}
+        primary = max((a for a in context.screen.areas if a.type == 'VIEW_3D'),
+                      key=lambda a: a.width * a.height, default=None)
+        if primary is None:
+            self.report({'WARNING'}, 'Open a modeling viewport first')
+            return {'CANCELLED'}
+        try:
+            editors = split_area(context.window, primary, .67)
+        except RuntimeError as error:
+            self.report({'WARNING'}, str(error))
+            return {'CANCELLED'}
+        PENDING = {'window': context.window, 'expected': context.workspace,
+                   'phase': 'finish_views', 'editors': editors}
+        for area in context.screen.areas:
+            if area.ui_type == 'BLAYA_TOOLS':
+                area.spaces.active.blaya_workflow = 'UV'
+        bpy.app.timers.register(build_pending, first_interval=.1)
         return {'FINISHED'}
 
 
@@ -179,15 +223,36 @@ def draw(layout, context):
         hint(row, context.window_manager.blaya_workspace_error)
 
 
+def workspace_changed():
+    if PENDING is not None and not bpy.app.timers.is_registered(build_pending):
+        bpy.app.timers.register(build_pending, first_interval=0.0)
+
+
+@persistent
+def cancel_pending(*args):
+    global PENDING
+    if bpy.app.timers.is_registered(build_pending):
+        bpy.app.timers.unregister(build_pending)
+    PENDING = None
+
+
 def register():
+    bpy.msgbus.subscribe_rna(key=(bpy.types.Window, 'workspace'), owner=OWNER,
+                            args=(), notify=workspace_changed, options={'PERSISTENT'})
+    bpy.app.handlers.load_pre.append(cancel_pending)
     bpy.utils.register_class(BLAYA_OT_workspace)
+    bpy.utils.register_class(BLAYA_OT_open_uv_editor)
     bpy.types.WindowManager.blaya_workspace_error = bpy.props.StringProperty(options={'SKIP_SAVE'})
 
 
 def unregister():
     global PENDING
+    bpy.msgbus.clear_by_owner(OWNER)
+    if cancel_pending in bpy.app.handlers.load_pre:
+        bpy.app.handlers.load_pre.remove(cancel_pending)
     if bpy.app.timers.is_registered(build_pending):
         bpy.app.timers.unregister(build_pending)
     PENDING = None
     del bpy.types.WindowManager.blaya_workspace_error
+    bpy.utils.unregister_class(BLAYA_OT_open_uv_editor)
     bpy.utils.unregister_class(BLAYA_OT_workspace)

@@ -2,7 +2,7 @@
 import bpy
 import bmesh
 import numpy as np
-from mathutils import Vector
+from .geometry_math import coordinates, transform_points, inverse_transform
 from bpy.props import FloatProperty, IntProperty
 from .mesh_preview import MeshPreview
 
@@ -44,6 +44,7 @@ def chains(bm):
 
 
 def spaced(points, closed):
+    points = coordinates(points, minimum=3)
     path = np.vstack((points, points[0])) if closed else points
     lengths = np.linalg.norm(np.diff(path, axis=0), axis=1)
     cumulative = np.concatenate(([0], np.cumsum(lengths)))
@@ -63,13 +64,11 @@ class LoopTool(MeshPreview):
             bm.verts.index_update()
             if not any(v.select and not v.hide for v in bm.verts):
                 continue
-            if abs(obj.matrix_world.determinant()) < 1e-12:
-                raise ValueError('An edited object has zero scale; restore its scale first')
-            inverse = obj.matrix_world.inverted()
+            inverse = inverse_transform(obj.matrix_world)
             for vertices, closed in chains(bm):
-                points = np.array([tuple(obj.matrix_world @ v.co) for v in vertices])
+                points = transform_points(obj.matrix_world, [tuple(v.co) for v in vertices])
                 result = self.transform_points(points, closed)
-                changes.append((obj, bm, vertices, [inverse @ Vector(co) for co in result]))
+                changes.append((obj, bm, vertices, transform_points(inverse, result)))
         return changes
 
 
