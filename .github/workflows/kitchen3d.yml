@@ -1,0 +1,176 @@
+name: Kitchen 3D builds
+
+on:
+  pull_request:
+  push:
+    branches: [codex/kitchen3d-5.3]
+    tags: ['kitchen3d-v*']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish a downloadable preview after all platforms pass
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kitchen3d-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  GIT_LFS_SKIP_SMUDGE: '1'
+
+jobs:
+  build:
+    name: Build and test ${{ matrix.platform }}
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-x64
+            runner: windows-2022
+            library: windows_x64
+          - platform: linux-x64
+            runner: ubuntu-24.04
+            library: linux_x64
+          - platform: macos-arm64
+            runner: macos-15
+            library: macos_arm64
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.11'
+      - name: Restore source assets and pinned platform libraries
+        run: |
+          git lfs install --local
+          git -c lfs.url=https://projects.blender.org/blender/blender.git/info/lfs lfs pull
+          git submodule update --init --checkout --depth 1 -- lib/${{ matrix.library }}
+          git -C lib/${{ matrix.library }} lfs pull
+      - name: Linux build prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libx11-dev libxxf86vm-dev libxcursor-dev libxi-dev libxrandr-dev libxinerama-dev libegl-dev libwayland-dev libxkbcommon-dev
+      - name: macOS build prerequisites
+        if: runner.os == 'macOS'
+        run: command -v ninja || brew install ninja
+      - name: Configure Windows compiler
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe" -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          Import-Module "$vs/Common7/Tools/Microsoft.VisualStudio.DevShell.dll"
+          Enter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64'
+          'PATH','INCLUDE','LIB','LIBPATH','VCToolsInstallDir','WindowsSdkDir','VCINSTALLDIR','VSINSTALLDIR' | ForEach-Object {
+            "$($_)=$([Environment]::GetEnvironmentVariable($_))" >> $env:GITHUB_ENV
+          }
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja -C build_files/kitchen3d/ci.cmake \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/install" \
+            -DTEST_PYTHON_EXE="$(python -c 'import sys; print(sys.executable)')"
+      - name: Build and install
+        run: cmake --build build --target install --parallel 3
+      - name: Kitchen 3D regression tests
+        run: ctest --test-dir build -C Release -L kitchen3d --output-on-failure --no-tests=error --parallel 1
+      - name: Installed runtime and render smoke test
+        run: |
+          case '${{ matrix.platform }}' in
+            windows-x64) executable="$PWD/install/blender.exe" ;;
+            linux-x64) executable="$PWD/install/blender" ;;
+            macos-arm64) executable="$PWD/install/Kitchen 3D.app/Contents/MacOS/Kitchen 3D" ;;
+          esac
+          python tests/python/run_kitchen3d_test.py --blender "$executable" \
+            --script "$PWD/tests/python/kitchen3d_package_smoke.py" --output "$PWD/build/package-smoke"
+      - name: Package tested build
+        run: python build_files/kitchen3d/package.py --install install --output dist --platform '${{ matrix.platform }}' --revision "$GITHUB_SHA"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Kitchen3D-${{ matrix.platform }}
+          path: dist/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+      - name: Preserve build and test diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: diagnostics-${{ matrix.platform }}
+          path: |
+            build/CMakeCache.txt
+            build/CMakeFiles/CMakeConfigureLog.yaml
+            build/Testing/Temporary/
+            build/tests/kitchen3d/
+            build/package-smoke/
+          retention-days: 14
+
+  source:
+    name: Archive corresponding source and dependencies
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Restore source assets
+        run: git -c lfs.url=https://projects.blender.org/blender/blender.git/info/lfs lfs pull
+      - name: Archive fork source and checksum-verified dependency sources
+        shell: bash
+        run: |
+          python3 build_files/kitchen3d/source_archive.py
+          cmake -DPACKAGE_DIR="$RUNNER_TEMP/dependency-sources" -P build_files/kitchen3d/download_sources.cmake
+          tar -cf - -C "$RUNNER_TEMP" dependency-sources | split -b 1024m -d - dist/Kitchen3D-dependency-sources.tar.part
+          cd dist
+          sha256sum Kitchen3D-source.tar.xz Kitchen3D-dependency-sources.tar.part* > SOURCE-SHA256SUMS.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Kitchen3D-source
+          path: dist/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  release:
+    name: Publish tested downloads
+    needs: [build, source]
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: Kitchen3D-*
+          path: dist
+          merge-multiple: true
+      - name: Publish an immutable preview for this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          REVISION: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        shell: bash
+        run: |
+          cat > notes.md <<EOF
+          Kitchen 3D 5.3 Beta preview, built from $REVISION.
+
+          Download the ZIP for Windows x64 or macOS Apple Silicon, or the tar.xz for Linux x64 (Ubuntu 24.04 or compatible). Extract before launching. These builds are unsigned and not notarized.
+
+          All three platforms passed the four Kitchen 3D background regression suites and an installed-runtime, Cycles CPU render, and save/reopen smoke test. GUI tests and the full upstream test suite are not run by this workflow. Windows/Linux Cycles GPU backends are disabled; macOS retains Metal.
+
+          Source and build scripts are in Kitchen3D-source.tar.xz. Download every Kitchen3D-dependency-sources.tar.partNN file and concatenate in numerical order, then extract the resulting tar to obtain dependency source packages. Checksums accompany all downloads. See build_files/kitchen3d/README.md in the source for rebuilding instructions.
+          EOF
+          tag="kitchen3d-build-$RUN_ID-$RUN_ATTEMPT"
+          gh release create "$tag" dist/* --target "$REVISION" --title "Kitchen 3D 5.3 Beta · build $RUN_ID" --notes-file notes.md --prerelease --draft
+          gh release edit "$tag" --draft=false
