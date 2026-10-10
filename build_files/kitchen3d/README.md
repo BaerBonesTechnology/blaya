@@ -64,8 +64,8 @@ labels, Python test configuration, and smoke-test invocation.
 ## Release source archives
 
 `Kitchen3D-source.tar.xz` contains the tracked fork source, materialized LFS
-assets, notices, patches, dependency build recipes, and this workflow. Binary
-library submodules are omitted; their pinned commits remain in the release's
+assets, notices, patches, dependency build recipes, and this workflow. The large
+upstream test fixtures under `tests/files` and binary library submodules are omitted; their pinned commits remain in the release's
 Git tree. The separate dependency archive contains the source packages selected
 by `build_files/build_environment/cmake/versions.cmake`, verified against its
 hashes. Source download failure blocks publication.

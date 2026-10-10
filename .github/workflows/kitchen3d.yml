@@ -53,7 +53,7 @@ jobs:
       - name: Restore source assets and pinned platform libraries
         run: |
           git lfs install --local
-          git -c lfs.url=https://projects.blender.org/blender/blender.git/info/lfs lfs pull
+          git -c lfs.url=https://projects.blender.org/blender/blender.git/info/lfs lfs pull --exclude="tests/files/**"
           git submodule update --init --checkout --depth 1 -- lib/${{ matrix.library }}
           git -C lib/${{ matrix.library }} lfs pull
       - name: Linux build prerequisites
@@ -123,7 +123,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Restore source assets
-        run: git -c lfs.url=https://projects.blender.org/blender/blender.git/info/lfs lfs pull
+        run: git -c lfs.url=https://projects.blender.org/blender/blender.git/info/lfs lfs pull --exclude="tests/files/**"
       - name: Archive fork source and checksum-verified dependency sources
         shell: bash
         run: |

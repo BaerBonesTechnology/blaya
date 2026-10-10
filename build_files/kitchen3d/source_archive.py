@@ -14,7 +14,7 @@ with tarfile.open(output / 'Kitchen3D-source.tar.xz', 'w:xz', preset=3) as archi
         if not record:
             continue
         metadata, name = record.split('\t', 1)
-        if metadata.startswith('160000 '):
+        if metadata.startswith('160000 ') or name.startswith('tests/files/'):
             continue
         path = root / name
         if path.is_file() and not path.is_symlink():
