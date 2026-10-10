@@ -1,4 +1,4 @@
 @echo off
 echo Starting Blender with the OpenGL backend
 
-"%~dp0\blender" --gpu-backend opengl
+"%~dp0\kitchen3d" --gpu-backend opengl

@@ -12,12 +12,25 @@ import tarfile
 
 def package(install, output, platform, revision):
     executable = {
-        'windows-x64': 'blender.exe',
-        'linux-x64': 'blender',
+        'windows-x64': 'kitchen3d.exe',
+        'linux-x64': 'kitchen3d',
         'macos-arm64': 'Kitchen 3D.app/Contents/MacOS/Kitchen 3D',
     }[platform]
     if not (install / executable).is_file():
         raise RuntimeError(f'Missing installed executable: {install / executable}')
+    if platform != 'macos-arm64':
+        suffix = '.exe' if platform == 'windows-x64' else ''
+        if not (install / f'kitchen3d-launcher{suffix}').is_file():
+            raise RuntimeError('Missing Kitchen 3D launcher')
+        if (install / f'blender{suffix}').exists():
+            raise RuntimeError('Stale Blender executable: use a clean install directory before packaging')
+    if platform == 'linux-x64':
+        desktop = (install / 'kitchen3d.desktop').read_text(encoding='utf-8')
+        for expected in ('Name=Kitchen 3D', 'Exec=kitchen3d %f', 'Icon=kitchen3d'):
+            if expected not in desktop:
+                raise RuntimeError(f'Incorrect desktop entry: missing {expected}')
+        if not (install / 'kitchen3d.svg').is_file():
+            raise RuntimeError('Missing Kitchen 3D desktop icon')
     root = Path(__file__).resolve().parents[2]
     output.mkdir(parents=True, exist_ok=True)
     name = f'Kitchen3D-{platform}'

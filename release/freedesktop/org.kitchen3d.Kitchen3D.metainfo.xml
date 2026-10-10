@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.kitchen3d.Kitchen3D</id>
+  <launchable type="desktop-id">kitchen3d.desktop</launchable>
+  <name>Kitchen 3D</name>
+  <summary>A personal Blender build with focused modeling workflows</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <description><p>Kitchen 3D is an independent Blender customization with modeling, UV and animation tools. It is not affiliated with or endorsed by the Blender Foundation.</p></description>
+  <url type="homepage">https://github.com/BaerBonesTechnology/blaya</url>
+  <url type="bugtracker">https://github.com/BaerBonesTechnology/blaya/issues</url>
+</component>

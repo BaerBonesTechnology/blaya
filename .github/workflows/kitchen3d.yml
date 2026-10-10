@@ -87,12 +87,15 @@ jobs:
       - name: Installed runtime and render smoke test
         run: |
           case '${{ matrix.platform }}' in
-            windows-x64) executable="$PWD/install/blender.exe" ;;
-            linux-x64) executable="$PWD/install/blender" ;;
+            windows-x64) executable="$PWD/install/kitchen3d.exe" ;;
+            linux-x64) executable="$PWD/install/kitchen3d" ;;
             macos-arm64) executable="$PWD/install/Kitchen 3D.app/Contents/MacOS/Kitchen 3D" ;;
           esac
           python tests/python/run_kitchen3d_test.py --blender "$executable" \
             --script "$PWD/tests/python/kitchen3d_package_smoke.py" --output "$PWD/build/package-smoke"
+      - name: Verify renamed native launcher
+        if: runner.os != 'macOS'
+        run: python tests/python/kitchen3d_launcher_smoke.py --install "$PWD/install"
       - name: Package tested build
         run: python build_files/kitchen3d/package.py --install install --output dist --platform '${{ matrix.platform }}' --revision "$GITHUB_SHA"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

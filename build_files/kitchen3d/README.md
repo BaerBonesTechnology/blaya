@@ -15,13 +15,18 @@ after 14 days; published release downloads do not have that expiration.
 
 | Download | Target | Launch after extracting |
 | --- | --- | --- |
-| `Kitchen3D-windows-x64.zip` | Windows x64 | `blender.exe` |
-| `Kitchen3D-linux-x64.tar.xz` | Ubuntu 24.04 x64 or compatible | `Kitchen3D-linux-x64/blender` |
+| `Kitchen3D-windows-x64.zip` | Windows x64 | `kitchen3d.exe` |
+| `Kitchen3D-linux-x64.tar.xz` | Ubuntu 24.04 x64 or compatible | `Kitchen3D-linux-x64/kitchen3d` |
 | `Kitchen3D-macos-arm64.zip` | Apple Silicon macOS | `Kitchen 3D.app` |
 
 Packages retain upstream license notices and include `COPYING`, `doc/license`,
 and `BUILD.json` identifying the exact source revision. Each package has a
-SHA-256 checksum. The Windows executable retains its internal upstream filename.
+SHA-256 checksum. The executables and desktop launchers use the Kitchen 3D name.
+Windows also includes `kitchen3d-launcher.exe` for starting without a console;
+Linux includes `kitchen3d-launcher` for bundled-library setup. CI smoke-tests
+these launchers as well as testing the main executables. Package from a clean
+install directory: older builds may leave a stale `blender.exe` or `blender`
+beside the renamed executable, which the packager will reject.
 These are unsigned previews, not installers; macOS notarization and Windows
 code signing require developer certificates and are not configured.
 

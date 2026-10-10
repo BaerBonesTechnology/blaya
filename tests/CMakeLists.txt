@@ -11,14 +11,14 @@ set(TEST_INSTALL_DIR ${CMAKE_INSTALL_PREFIX_WITH_CONFIG})
 
 # Path to Blender and Python executables for all platforms.
 if(MSVC)
-  set(TEST_BLENDER_EXE ${TEST_INSTALL_DIR}/blender.exe)
+  set(TEST_BLENDER_EXE ${TEST_INSTALL_DIR}/kitchen3d.exe)
 elseif(APPLE)
   set(TEST_BLENDER_EXE "${TEST_INSTALL_DIR}/Kitchen 3D.app/Contents/MacOS/Kitchen 3D")
 else()
   if(WITH_INSTALL_PORTABLE)
-    set(TEST_BLENDER_EXE ${TEST_INSTALL_DIR}/blender)
+    set(TEST_BLENDER_EXE ${TEST_INSTALL_DIR}/kitchen3d)
   else()
-    set(TEST_BLENDER_EXE ${TEST_INSTALL_DIR}/bin/blender)
+    set(TEST_BLENDER_EXE ${TEST_INSTALL_DIR}/bin/kitchen3d)
   endif()
 endif()
 

@@ -1,5 +1,5 @@
 @echo off
-echo Starting blender with factory settings, log files will be created
+echo Starting Kitchen 3D with factory settings, log files will be created
 echo in your temp folder, windows explorer will open after you close blender
 echo to help you find them.
 echo.
@@ -9,12 +9,12 @@ echo blender_debug_output.txt and blender_system_info.txt in your report.
 echo.
 pause
 echo.
-echo Starting blender and waiting for it to exit....
+echo Starting Kitchen 3D and waiting for it to exit....
 setlocal
 
 set PYTHONPATH=
 set DEBUGLOGS="%temp%\blender\debug_logs"
 mkdir "%DEBUGLOGS%" > NUL 2>&1
 
-"%~dp0\blender" --factory-startup --python-expr "import bpy; bpy.context.preferences.filepaths.temporary_directory=r'%DEBUGLOGS%'; bpy.ops.wm.sysinfo(filepath=r'%DEBUGLOGS%\blender_system_info.txt')" > "%DEBUGLOGS%\blender_debug_output.txt" 2>&1 < %0
+"%~dp0\kitchen3d" --factory-startup --python-expr "import bpy; bpy.context.preferences.filepaths.temporary_directory=r'%DEBUGLOGS%'; bpy.ops.wm.sysinfo(filepath=r'%DEBUGLOGS%\blender_system_info.txt')" > "%DEBUGLOGS%\blender_debug_output.txt" 2>&1 < %0
 explorer "%DEBUGLOGS%"

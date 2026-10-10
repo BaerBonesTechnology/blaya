@@ -77,7 +77,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
   siStartInfo.wShowWindow = SW_HIDE;
   siStartInfo.dwFlags = STARTF_USESHOWWINDOW;
 
-  /* Get the path to the currently running executable (`blender-launcher.exe`). */
+  /* Get the path to the currently running executable (`kitchen3d-launcher.exe`). */
 
   DWORD nSize = GetModuleFileName(NULL, path, MAX_PATH);
   if (!nSize) {
@@ -93,13 +93,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     return -1;
   }
 
-  /* Remove the filename (blender-launcher.exe) from path. */
+  /* Remove the filename (kitchen3d-launcher.exe) from path. */
   if (PathCchRemoveFileSpec(path, MAX_PATH) != S_OK) {
     return -1;
   }
 
-  /* Add blender.exe to path, resulting in the full path to the blender executable. */
-  if (PathCchCombine(path, MAX_PATH, path, L"blender.exe") != S_OK) {
+  /* Add kitchen3d.exe to path, resulting in the full path to the blender executable. */
+  if (PathCchCombine(path, MAX_PATH, path, L"kitchen3d.exe") != S_OK) {
     return -1;
   }
 

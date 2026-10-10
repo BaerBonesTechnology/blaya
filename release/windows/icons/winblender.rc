@@ -9,8 +9,8 @@
 	#define BLEN_VER_RC_STR STRINGIFY(BLEN_VER_RC_STR_M)
 #endif
 
-APPICON ICON DISCARDABLE "winblender.ico"
-BLENDERFILE ICON DISCARDABLE "winblenderfile.ico"
+APPICON ICON DISCARDABLE "kitchen3d.ico"
+BLENDERFILE ICON DISCARDABLE "kitchen3d.ico"
 
 IDR_VERSION1 VERSIONINFO
 FILEVERSION BLEN_VER_RC_1, BLEN_VER_RC_2, BLEN_VER_RC_3, BLEN_VER_RC_4
@@ -24,11 +24,11 @@ BEGIN
     BEGIN
       VALUE "FileVersion", BLEN_VER_RC_STR
       VALUE "ProductVersion", BLEN_VER_RC_STR
-      VALUE "CompanyName", "Blender Foundation"
-      VALUE "FileDescription", "Blender"
+      VALUE "CompanyName", "Kitchen 3D contributors"
+      VALUE "FileDescription", "Kitchen 3D"
       VALUE "LegalCopyright", "GPLv3 (Blender Foundation)"
-      VALUE "OriginalFilename", "blender.exe"
-      VALUE "ProductName", "Blender"
+      VALUE "OriginalFilename", "kitchen3d.exe"
+      VALUE "ProductName", "Kitchen 3D"
     END
   END
   BLOCK "VarFileInfo"

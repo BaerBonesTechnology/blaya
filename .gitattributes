@@ -120,3 +120,5 @@ release/darwin/Blender.app/Contents/Resources/blaya.icns -filter -diff -merge -t
 release/darwin/blaya-icon-preview.png -filter -diff -merge -text
 release/datafiles/splash.png -filter -diff -merge -text
 scripts/modules/blaya/assets/brand.png -filter -diff -merge -text
+
+release/windows/icons/kitchen3d.ico -filter -diff -merge -text

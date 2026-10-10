@@ -342,6 +342,9 @@ if(WITH_PYTHON_MODULE)
 
 else()
   add_executable(blender ${EXETYPE} ${SRC})
+  if(NOT APPLE)
+    set_target_properties(blender PROPERTIES OUTPUT_NAME "kitchen3d")
+  endif()
   if(WITH_CPU_CHECK)
     # blender_cpu_check *NEEDS* to be linked first, there can be no exceptions
     # to this, this is to ensure this will be the first code to run once the
@@ -358,6 +361,7 @@ else()
         ${CMAKE_BINARY_DIR}/blender.exe.manifest
       )
     endif()
+    set_target_properties(blender-launcher PROPERTIES OUTPUT_NAME "kitchen3d-launcher")
     target_compile_definitions(blender-launcher PRIVATE -D_UNICODE -DUNICODE)
     target_link_libraries(blender-launcher Pathcch.lib)
   endif()
@@ -833,7 +837,7 @@ if(UNIX AND NOT APPLE)
 
     # none of the other files are needed currently
   elseif(WITH_INSTALL_PORTABLE)
-    set(BLENDER_BIN "blender")
+    set(BLENDER_BIN "kitchen3d")
     install(
       TARGETS blender
       DESTINATION "."
@@ -848,9 +852,9 @@ if(UNIX AND NOT APPLE)
 
     install(
       FILES
-        ${CMAKE_SOURCE_DIR}/release/freedesktop/blender.desktop
-        ${CMAKE_SOURCE_DIR}/release/freedesktop/icons/scalable/apps/blender.svg
-        ${CMAKE_SOURCE_DIR}/release/freedesktop/icons/symbolic/apps/blender-symbolic.svg
+        ${CMAKE_SOURCE_DIR}/release/freedesktop/kitchen3d.desktop
+        ${CMAKE_SOURCE_DIR}/release/freedesktop/icons/scalable/apps/kitchen3d.svg
+        ${CMAKE_SOURCE_DIR}/release/freedesktop/icons/symbolic/apps/kitchen3d-symbolic.svg
       DESTINATION "."
     )
 
@@ -869,30 +873,31 @@ if(UNIX AND NOT APPLE)
         PROGRAMS
         ${CMAKE_SOURCE_DIR}/release/bin/blender-launcher
         DESTINATION "."
+        RENAME kitchen3d-launcher
       )
     endif()
   else()
     # main blender binary
-    set(BLENDER_BIN "bin/blender")
+    set(BLENDER_BIN "bin/kitchen3d")
     install(
       TARGETS blender
       DESTINATION "./bin"
     )
     # Misc files.
     install(
-      FILES ${CMAKE_SOURCE_DIR}/release/freedesktop/blender.desktop
+      FILES ${CMAKE_SOURCE_DIR}/release/freedesktop/kitchen3d.desktop
       DESTINATION "./share/applications"
     )
     install(
-      FILES ${CMAKE_SOURCE_DIR}/release/freedesktop/org.blender.Blender.metainfo.xml
+      FILES ${CMAKE_SOURCE_DIR}/release/freedesktop/org.kitchen3d.Kitchen3D.metainfo.xml
       DESTINATION "./share/metainfo"
     )
     install(
-      FILES ${CMAKE_SOURCE_DIR}/release/freedesktop/icons/scalable/apps/blender.svg
+      FILES ${CMAKE_SOURCE_DIR}/release/freedesktop/icons/scalable/apps/kitchen3d.svg
       DESTINATION "./share/icons/hicolor/scalable/apps"
     )
     install(
-      FILES ${CMAKE_SOURCE_DIR}/release/freedesktop/icons/symbolic/apps/blender-symbolic.svg
+      FILES ${CMAKE_SOURCE_DIR}/release/freedesktop/icons/symbolic/apps/kitchen3d-symbolic.svg
       DESTINATION "./share/icons/hicolor/symbolic/apps"
     )
     if(WITH_BLENDER_THUMBNAILER)
@@ -1098,11 +1103,12 @@ elseif(WIN32)
     install(
       FILES ${CMAKE_BINARY_DIR}/blender.exe.manifest
       DESTINATION "."
+      RENAME kitchen3d.exe.manifest
     )
     install(
       FILES ${CMAKE_BINARY_DIR}/blender.exe.manifest
       DESTINATION "."
-      RENAME blender-launcher.exe.manifest
+      RENAME kitchen3d-launcher.exe.manifest
     )
   endif()
   windows_install_shared_manifest(
@@ -2209,7 +2215,7 @@ endif()
 # Setup launcher
 
 if(WIN32 AND NOT WITH_PYTHON_MODULE)
-  set(BLENDER_BIN "blender.exe")
+  set(BLENDER_BIN "kitchen3d.exe")
   install(
     TARGETS blender blender-launcher
     COMPONENT Blender
