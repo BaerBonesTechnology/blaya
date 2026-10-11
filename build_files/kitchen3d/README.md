@@ -51,7 +51,7 @@ again to test upgrading, runs the installed launcher and render smoke tests,
 and uninstalls. It verifies that a user-created file survives both operations.
 Publication is blocked if any installer check fails. The manually dispatched
 **Validate Windows installer** workflow provides a faster test with a pinned,
-checksum-verified release fixture; its artifacts are validation builds, not a
+checksum-verified executable fixture with the current Kitchen Python tools; its artifacts are validation builds, not a
 replacement for a release built from the current source.
 
 To compile an installer on Windows after `package.py` has produced `BUILD.json`

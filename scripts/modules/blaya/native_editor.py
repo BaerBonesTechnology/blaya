@@ -124,6 +124,10 @@ class ToolLayout:
         row = self._layout.column(align=True)
         row.enabled = op.poll()
         properties = row.operator('blaya.editor_action', **kwargs)
+        # All routed buttons share one operator. Explicitly set even empty
+        # arguments so invoking a no-argument tool cannot reuse the last tool's
+        # properties (for example a modeling command on Onion Skin).
+        properties.arguments = '{}'
         properties.operator_id = identifier
         properties.workflow = self._workflow
         properties.tooltip = rna.description or rna.name

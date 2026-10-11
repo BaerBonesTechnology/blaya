@@ -32,6 +32,12 @@ jobs:
           $expected = 'fec2ef27bf54d88f4d4e4825f0eacabea8ed07d7273f1464f49dff5833ef6b93'
           if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { throw 'Release fixture checksum mismatch' }
           Expand-Archive -Path $archive -DestinationPath install
+      - name: Test current Python tools with the verified Windows executable
+        shell: pwsh
+        run: |
+          Copy-Item scripts/modules/blaya/* install/5.3/scripts/modules/blaya/ -Recurse -Force
+          python tests/python/run_kitchen3d_test.py --blender install/kitchen3d.exe --script tests/python/kitchen3d_regression.py --output build/installer-smoke/runtime-regression
+          if ($LASTEXITCODE -ne 0) { throw 'Windows runtime regression failed' }
       - name: Compile installer
         run: python build_files/kitchen3d/build_installer.py --install install --output dist
       - name: Test installation, upgrade and uninstall

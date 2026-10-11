@@ -3,12 +3,38 @@ import unittest
 from unittest.mock import patch
 from types import SimpleNamespace
 import math
+import json
 import bpy
 import bmesh
 import numpy as np
-from blaya import circular, loop_tools, onion_skin, workspace
+from blaya import circular, loop_tools, onion_skin, workspace, native_editor
 from blaya.geometry_math import coordinates, inverse_transform, transform_points, pack_tiles
 from blaya.mesh_preview import MeshPreview
+
+
+class ToolRoutingTests(unittest.TestCase):
+    def test_argumentless_tools_reset_previous_command(self):
+        # UI buttons share the editor_action operator, whose previous properties
+        # can contain a modeling command. Exercise the real button adapter.
+        for identifier in ('blaya.onion_skin', 'blaya.onion_refresh'):
+            properties = SimpleNamespace(arguments='{"command": "relax"}')
+            layout = SimpleNamespace(
+                operator_context='INVOKE_DEFAULT',
+                column=lambda **kwargs: SimpleNamespace(operator=lambda *args, **kwargs: properties),
+            )
+            native_editor.ToolLayout(layout, 'ANIMATION').operator(identifier)
+            self.assertEqual(json.loads(properties.arguments), {})
+            self.assertEqual(properties.operator_id, identifier)
+            self.assertEqual(properties.workflow, 'ANIMATION')
+
+    def test_parameterized_tools_keep_explicit_arguments(self):
+        properties = SimpleNamespace(arguments='{"unrelated": true}')
+        layout = SimpleNamespace(
+            operator_context='EXEC_DEFAULT',
+            column=lambda **kwargs: SimpleNamespace(operator=lambda *args, **kwargs: properties),
+        )
+        native_editor.ToolLayout(layout, 'MODEL').operator('blaya.command').command = 'relax'
+        self.assertEqual(json.loads(properties.arguments), {'command': 'relax'})
 
 
 class MathTests(unittest.TestCase):
