@@ -1,0 +1,62 @@
+name: Kitchen 3D development tests
+
+on:
+  push:
+    branches: [codex/development]
+  pull_request:
+    branches: [codex/development, codex/kitchen3d-5.3]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kitchen3d-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GIT_LFS_SKIP_SMUDGE: '1'
+
+jobs:
+  python-regressions:
+    name: Windows Python regression suite
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          lfs: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      - name: Download verified runtime fixture
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: pwsh
+        run: |
+          gh release download kitchen3d-build-38094565199-1 --pattern Kitchen3D-windows-x64.zip --dir "$env:RUNNER_TEMP/payload"
+          if ($LASTEXITCODE -ne 0) { throw 'Runtime fixture download failed' }
+          $archive = "$env:RUNNER_TEMP/payload/Kitchen3D-windows-x64.zip"
+          $expected = 'fec2ef27bf54d88f4d4e4825f0eacabea8ed07d7273f1464f49dff5833ef6b93'
+          if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { throw 'Runtime fixture checksum mismatch' }
+          Expand-Archive -Path $archive -DestinationPath runtime
+      - name: Stage current Python tools
+        shell: pwsh
+        run: |
+          Copy-Item scripts/modules/blaya/* runtime/5.3/scripts/modules/blaya/ -Recurse -Force
+          Copy-Item scripts/startup/blaya_framework.py runtime/5.3/scripts/startup/blaya_framework.py -Force
+      - name: Run regression suites
+        shell: pwsh
+        run: |
+          $tests = @('kitchen3d_regression', 'blaya_circular', 'blaya_loop_tools', 'blaya_animation_pose', 'kitchen3d_gltf_instancing')
+          $failed = @()
+          foreach ($test in $tests) {
+            Write-Output "::group::$test"
+            python tests/python/run_kitchen3d_test.py --blender runtime/kitchen3d.exe --script "tests/python/$test.py" --output "build/tests/$test"
+            $code = $LASTEXITCODE
+            Write-Output "::endgroup::"
+            if ($code -ne 0) { $failed += $test }
+          }
+          if ($failed.Count -gt 0) { throw "Failed tests: $($failed -join ', ')" }

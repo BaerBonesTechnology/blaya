@@ -1,8 +1,7 @@
 # Kitchen 3D CI and downloads
 
 The **Kitchen 3D builds** GitHub Actions workflow builds Windows x64, Linux x64,
-and macOS arm64 independently. Pull requests run the same builds and tests with
-read-only repository permissions. Pushes to `codex/kitchen3d-5.3` and tags matching
+and macOS arm64 independently. Pushes to `codex/kitchen3d-5.3` and tags matching
 `kitchen3d-v*` publish a preview only after every build and the source archive job
 succeed. Manual runs publish only when **publish** is checked.
 
@@ -10,6 +9,25 @@ Each release has its own run-specific tag and is published from a draft after
 all assets upload. A failed run leaves previous releases available. The README
 download button opens Releases, including beta previews. CI artifacts expire
 after 14 days; published release downloads do not have that expiration.
+
+## Development tests
+
+Work on `codex/development` and promote changes to `codex/kitchen3d-5.3` when
+ready for a release. **Kitchen 3D development tests** runs on development pushes
+and pull requests targeting either branch. It uses read-only permissions and a
+checksum-pinned Windows release executable to run the current Python tools and
+five background suites, including a real glTF export regression. The glTF test
+loads the exporter from the checkout rather than from the downloaded runtime.
+
+This workflow creates no installers, release archives, source bundles, uploaded
+artifacts, or releases. Results are in the Actions logs. New pushes cancel only
+obsolete development test runs; the release workflow uses separate concurrency.
+
+This is a Python regression gate, not native build or GUI validation. C/C++
+changes still require a native build before promotion. Release builds retain
+the full Windows/Linux/macOS build, render, packaging and installer checks.
+The new development workflow and release-trigger changes take effect from this
+branch; the production branch is unchanged until promotion.
 
 ## Packages and coverage
 

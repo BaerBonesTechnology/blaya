@@ -1,7 +1,6 @@
 name: Kitchen 3D builds
 
 on:
-  pull_request:
   push:
     branches: [codex/kitchen3d-5.3]
     tags: ['kitchen3d-v*']
@@ -178,7 +177,7 @@ jobs:
 
           Windows: download Kitchen3D-windows-x64-setup.exe for the installation wizard, shortcuts and uninstaller, or use the portable ZIP. macOS Apple Silicon: download the ZIP. Linux x64 (Ubuntu 24.04 or compatible): download the tar.xz. Extract portable archives before launching. These builds are unsigned and not notarized.
 
-          All three platforms passed the four Kitchen 3D background regression suites and an installed-runtime, Cycles CPU render, and save/reopen smoke test. GUI tests and the full upstream test suite are not run by this workflow. Windows/Linux Cycles GPU backends are disabled; macOS retains Metal.
+          All three platforms passed the five Kitchen 3D background regression suites and an installed-runtime, Cycles CPU render, and save/reopen smoke test. GUI tests and the full upstream test suite are not run by this workflow. Windows/Linux Cycles GPU backends are disabled; macOS retains Metal.
 
           Windows Setup also passed installation, shortcut-target, upgrade, installed-runtime and uninstall checks. It installs for the current user and preserves user-owned files when uninstalling.
 
