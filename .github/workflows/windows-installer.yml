@@ -1,0 +1,52 @@
+name: Validate Windows installer
+
+# A quick native installer test using a fixed, already-tested release payload.
+# Normal releases build the installer from their own freshly compiled payload.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  installer:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          lfs: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      - name: Download verified Windows release fixture
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: pwsh
+        run: |
+          gh release download kitchen3d-build-38094565199-1 --pattern Kitchen3D-windows-x64.zip --dir "$env:RUNNER_TEMP/payload"
+          if ($LASTEXITCODE -ne 0) { throw 'Release fixture download failed' }
+          $archive = "$env:RUNNER_TEMP/payload/Kitchen3D-windows-x64.zip"
+          $expected = 'fec2ef27bf54d88f4d4e4825f0eacabea8ed07d7273f1464f49dff5833ef6b93'
+          if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { throw 'Release fixture checksum mismatch' }
+          Expand-Archive -Path $archive -DestinationPath install
+      - name: Compile installer
+        run: python build_files/kitchen3d/build_installer.py --install install --output dist
+      - name: Test installation, upgrade and uninstall
+        run: python tests/python/kitchen3d_installer_smoke.py --setup dist/Kitchen3D-windows-x64-setup.exe --output build/installer-smoke
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Kitchen3D-setup-validation
+          path: dist/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 3
+      - name: Preserve installer diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: installer-diagnostics
+          path: build/installer-smoke/
+          retention-days: 3

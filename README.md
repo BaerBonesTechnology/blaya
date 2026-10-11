@@ -6,8 +6,12 @@ A personal Blender build, shaped around the way I work.
 [![Build and tests](https://github.com/BaerBonesTechnology/blaya/actions/workflows/kitchen3d.yml/badge.svg)](https://github.com/BaerBonesTechnology/blaya/actions/workflows/kitchen3d.yml)
 
 Choose **Windows x64**, **Linux x64**, or **macOS Apple Silicon** from the
-release assets. Downloads appear after the first successful cross-platform
-pipeline. Extract the package before launching; these preview builds are
+release assets. Windows releases include **`Kitchen3D-windows-x64-setup.exe`**
+with an installation wizard, Start menu shortcut, optional desktop shortcut,
+and uninstaller. Choose standalone use or set Kitchen 3D as your `.blend` app
+through Windows Settings; Blender stays installed. The portable ZIP remains available. New assets appear after
+their cross-platform pipeline passes. Extract portable archives before launching;
+these preview builds are
 unsigned and macOS builds are not notarized. Linux packages target Ubuntu 24.04
 or compatible distributions. Intel Macs and Windows/Linux ARM are not included.
 

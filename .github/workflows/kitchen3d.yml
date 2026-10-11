@@ -98,6 +98,12 @@ jobs:
         run: python tests/python/kitchen3d_launcher_smoke.py --install "$PWD/install"
       - name: Package tested build
         run: python build_files/kitchen3d/package.py --install install --output dist --platform '${{ matrix.platform }}' --revision "$GITHUB_SHA"
+      - name: Build Windows installation wizard
+        if: runner.os == 'Windows'
+        run: python build_files/kitchen3d/build_installer.py --install install --output dist
+      - name: Test Windows install, upgrade and uninstall
+        if: runner.os == 'Windows'
+        run: python tests/python/kitchen3d_installer_smoke.py --setup dist/Kitchen3D-windows-x64-setup.exe --output build/installer-smoke
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: Kitchen3D-${{ matrix.platform }}
@@ -116,6 +122,7 @@ jobs:
             build/Testing/Temporary/
             build/tests/kitchen3d/
             build/package-smoke/
+            build/installer-smoke/
           retention-days: 14
 
   source:
@@ -169,9 +176,11 @@ jobs:
           cat > notes.md <<EOF
           Kitchen 3D 5.3 Beta preview, built from $REVISION.
 
-          Download the ZIP for Windows x64 or macOS Apple Silicon, or the tar.xz for Linux x64 (Ubuntu 24.04 or compatible). Extract before launching. These builds are unsigned and not notarized.
+          Windows: download Kitchen3D-windows-x64-setup.exe for the installation wizard, shortcuts and uninstaller, or use the portable ZIP. macOS Apple Silicon: download the ZIP. Linux x64 (Ubuntu 24.04 or compatible): download the tar.xz. Extract portable archives before launching. These builds are unsigned and not notarized.
 
           All three platforms passed the four Kitchen 3D background regression suites and an installed-runtime, Cycles CPU render, and save/reopen smoke test. GUI tests and the full upstream test suite are not run by this workflow. Windows/Linux Cycles GPU backends are disabled; macOS retains Metal.
+
+          Windows Setup also passed installation, shortcut-target, upgrade, installed-runtime and uninstall checks. It installs for the current user and preserves user-owned files when uninstalling.
 
           Source and build scripts are in Kitchen3D-source.tar.xz. Download every Kitchen3D-dependency-sources.tar.partNN file and concatenate in numerical order, then extract the resulting tar to obtain dependency source packages. Checksums accompany all downloads. See build_files/kitchen3d/README.md in the source for rebuilding instructions.
           EOF

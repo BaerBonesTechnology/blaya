@@ -15,6 +15,7 @@ after 14 days; published release downloads do not have that expiration.
 
 | Download | Target | Launch after extracting |
 | --- | --- | --- |
+| `Kitchen3D-windows-x64-setup.exe` | Windows x64 | Run the installation wizard |
 | `Kitchen3D-windows-x64.zip` | Windows x64 | `kitchen3d.exe` |
 | `Kitchen3D-linux-x64.tar.xz` | Ubuntu 24.04 x64 or compatible | `Kitchen3D-linux-x64/kitchen3d` |
 | `Kitchen3D-macos-arm64.zip` | Apple Silicon macOS | `Kitchen 3D.app` |
@@ -27,8 +28,38 @@ Linux includes `kitchen3d-launcher` for bundled-library setup. CI smoke-tests
 these launchers as well as testing the main executables. Package from a clean
 install directory: older builds may leave a stale `blender.exe` or `blender`
 beside the renamed executable, which the packager will reject.
-These are unsigned previews, not installers; macOS notarization and Windows
+These are unsigned previews; macOS notarization and Windows
 code signing require developer certificates and are not configured.
+
+The Windows installer uses Inno Setup 6 and installs for the current user under
+`%LOCALAPPDATA%\Programs\Kitchen3D` by default, without requiring administrator
+rights. The location is configurable. It creates a Start menu shortcut, offers
+an optional desktop shortcut, and registers an uninstaller in Windows Settings.
+The shortcuts use the stove icon and launch `kitchen3d-launcher.exe`.
+Subsequent Setup runs reuse the existing location. Uninstall removes installed
+files and shortcuts; it does not delete preferences or user-created project files.
+Setup offers **Standalone** (the default) or **Use Kitchen 3D for .blend files**.
+The second option registers Kitchen 3D as a file handler and opens Windows Default
+Apps on the finish page; select Kitchen 3D for `.blend` there to complete the change.
+Both options keep Blender installed. Setup never overwrites Blender's registrations
+or Windows' protected user choice. Uninstall removes Kitchen 3D's registrations;
+Windows may ask you to choose another default afterward.
+
+CI compiles the installer after packaging, then installs it into a temporary
+path containing spaces, checks the shortcuts and uninstall entry, installs it
+again to test upgrading, runs the installed launcher and render smoke tests,
+and uninstalls. It verifies that a user-created file survives both operations.
+Publication is blocked if any installer check fails. The manually dispatched
+**Validate Windows installer** workflow provides a faster test with a pinned,
+checksum-verified release fixture; its artifacts are validation builds, not a
+replacement for a release built from the current source.
+
+To compile an installer on Windows after `package.py` has produced `BUILD.json`
+and copied the notices, install Inno Setup 6 and run:
+
+```sh
+python build_files/kitchen3d/build_installer.py --install install --output dist
+```
 
 The four background suites cover Kitchen 3D geometry, circularize, loop tools,
 and animation/pose behavior. A separate smoke test checks the installed Python
