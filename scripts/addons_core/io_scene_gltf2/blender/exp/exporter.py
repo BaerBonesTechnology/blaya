@@ -425,7 +425,11 @@ class GlTF2Exporter:
                 for animation in self.__gltf.animations:
                     new_channel_list = []
                     for channel in animation.channels:
-                        if channel.target.node in old_to_new:
+                        if channel.target.node is None:
+                            # KHR_animation_pointer channels target properties rather
+                            # than nodes, so node removal must not discard them.
+                            new_channel_list.append(channel)
+                        elif channel.target.node in old_to_new:
                             channel.target.node = old_to_new[channel.target.node]
                             new_channel_list.append(channel)
                     animation.channels = new_channel_list
