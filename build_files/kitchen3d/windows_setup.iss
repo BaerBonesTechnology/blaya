@@ -66,7 +66,7 @@ Name: "{autodesktop}\Kitchen 3D"; Filename: "{app}\kitchen3d-launcher.exe"; Work
 Root: HKCU; Subkey: "Software\Classes\Kitchen3D.Setup.Blend"; ValueType: string; ValueData: "Kitchen 3D Project"; Flags: uninsdeletekey; Tasks: blendfiles
 Root: HKCU; Subkey: "Software\Classes\Kitchen3D.Setup.Blend\DefaultIcon"; ValueType: string; ValueData: """{app}\kitchen3d.exe"",0"; Tasks: blendfiles
 Root: HKCU; Subkey: "Software\Classes\Kitchen3D.Setup.Blend\shell\open\command"; ValueType: string; ValueData: """{app}\kitchen3d-launcher.exe"" ""%1"""; Tasks: blendfiles
-Root: HKCU; Subkey: "Software\Classes\.blend\OpenWithProgids"; ValueType: none; ValueName: "Kitchen3D.Setup.Blend"; Flags: uninsdeletevalue; Tasks: blendfiles
+Root: HKCU; Subkey: "Software\Classes\.blend\OpenWithProgids"; ValueType: string; ValueName: "Kitchen3D.Setup.Blend"; ValueData: ""; Flags: uninsdeletevalue; Tasks: blendfiles
 Root: HKCU; Subkey: "Software\Kitchen3D\SetupCapabilities"; ValueType: string; ValueName: "ApplicationName"; ValueData: "Kitchen 3D"; Flags: uninsdeletekey; Tasks: blendfiles
 Root: HKCU; Subkey: "Software\Kitchen3D\SetupCapabilities"; ValueType: string; ValueName: "ApplicationDescription"; ValueData: "Model, animate and render .blend projects in Kitchen 3D."; Tasks: blendfiles
 Root: HKCU; Subkey: "Software\Kitchen3D\SetupCapabilities\FileAssociations"; ValueType: string; ValueName: ".blend"; ValueData: "Kitchen3D.Setup.Blend"; Tasks: blendfiles
