@@ -14,8 +14,13 @@ def selected_face(context, face):
 def uv_islands(bm, layer):
     """Connected faces whose shared-edge UV endpoints coincide."""
     pending = set(bm.faces)  # Hidden neighbors keep the island connected; partial selection is skipped.
-    while pending:
-        seed = pending.pop(); island = {seed}; stack = [seed]
+    # Set iteration depends on BMesh allocation addresses. Keep island order
+    # stable so the same mesh receives the same UDIM placements on every run.
+    for seed in bm.faces:
+        if seed not in pending:
+            continue
+        pending.remove(seed)
+        island = {seed}; stack = [seed]
         while stack:
             face = stack.pop()
             for loop in face.loops:

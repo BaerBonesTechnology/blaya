@@ -222,7 +222,7 @@ class UVTests(unittest.TestCase):
             self.assertAlmostEqual(bpy.context.scene.blaya_uv_settings.density, value*100, places=3)
 
     def test_udim_islands_preserve_scale_and_unselected(self):
-        from blaya.uv_workflow import distribute_udims
+        from blaya.uv_workflow import distribute_udims, uv_islands
         mesh=bpy.data.meshes.new('UV islands')
         points=[(2*i+x,y,0) for i in range(3) for x,y in ((0,0),(1,0),(1,1),(0,1))]
         mesh.from_pydata(points, [], [tuple(range(i*4,i*4+4)) for i in range(3)])
@@ -233,6 +233,7 @@ class UVTests(unittest.TestCase):
             for loop,point in zip(face.loops,((.1,.1),(.7,.1),(.7,.7),(.1,.7))):loop[uv].uv=point
         bpy.context.scene.tool_settings.use_uv_select_sync=True
         original=np.array([tuple(l[uv].uv) for l in bm.faces[2].loops])
+        self.assertEqual([next(iter(island)) for island in uv_islands(bm, uv)], list(bm.faces))
         count,skipped=distribute_udims(bpy.context,bpy.context.scene.blaya_uv_settings)
         self.assertEqual((count,skipped),(2,0))
         for face,tile in zip(list(bm.faces)[:2],(1,2)):
