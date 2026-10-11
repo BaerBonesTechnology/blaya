@@ -1,6 +1,6 @@
 """Kitchen 3D --background --factory-startup --python-exit-code 1 --python this_file."""
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 from types import SimpleNamespace
 import math
 import json
@@ -10,6 +10,39 @@ import numpy as np
 from blaya import circular, loop_tools, onion_skin, workspace, native_editor
 from blaya.geometry_math import coordinates, inverse_transform, transform_points, pack_tiles
 from blaya.mesh_preview import MeshPreview
+
+
+class StartupSplashTests(unittest.TestCase):
+    def test_waits_for_workspace_then_shows_once(self):
+        import blaya_framework
+        fake = SimpleNamespace(
+            app=SimpleNamespace(background=False, timers=SimpleNamespace(is_registered=Mock(return_value=True))),
+            data=SimpleNamespace(filepath=''),
+            context=SimpleNamespace(window=object(), preferences=SimpleNamespace(view=SimpleNamespace(show_splash=True))),
+            ops=SimpleNamespace(wm=SimpleNamespace(splash=Mock())),
+        )
+        with patch.object(blaya_framework, 'bpy', fake), patch.object(workspace, 'PENDING', None):
+            self.assertEqual(blaya_framework.show_startup_splash(), .2)
+            fake.ops.wm.splash.assert_not_called()
+            fake.app.timers.is_registered.return_value = False
+            with patch.object(workspace, 'PENDING', {'step': 'split'}):
+                self.assertEqual(blaya_framework.show_startup_splash(), .2)
+                fake.ops.wm.splash.assert_not_called()
+            self.assertIsNone(blaya_framework.show_startup_splash())
+            fake.ops.wm.splash.assert_called_once_with('INVOKE_DEFAULT')
+
+    def test_respects_preferences_file_open_and_background(self):
+        import blaya_framework
+        for background, filepath, enabled in ((True, '', True), (False, 'project.blend', True), (False, '', False)):
+            fake = SimpleNamespace(
+                app=SimpleNamespace(background=background),
+                data=SimpleNamespace(filepath=filepath),
+                context=SimpleNamespace(preferences=SimpleNamespace(view=SimpleNamespace(show_splash=enabled))),
+                ops=SimpleNamespace(wm=SimpleNamespace(splash=Mock())),
+            )
+            with patch.object(blaya_framework, 'bpy', fake):
+                self.assertIsNone(blaya_framework.show_startup_splash())
+                fake.ops.wm.splash.assert_not_called()
 
 
 class ToolRoutingTests(unittest.TestCase):

@@ -440,6 +440,14 @@ void WM_init_splash_on_startup(bContext *C)
     return;
   }
 
+#ifdef WITH_PYTHON
+  /* Kitchen 3D builds its initial workspace asynchronously. A workspace switch
+   * closes popup regions, so show the startup splash only after it finishes. */
+  const char *imports[] = {"blaya_framework", nullptr};
+  if (BPY_run_string_eval(C, imports, "blaya_framework.defer_startup_splash()")) {
+    return;
+  }
+#endif
   WM_init_splash(C);
 }
 

@@ -2001,7 +2001,7 @@ if(TEST_PYTHON_EXE)
   endforeach()
   option(WITH_KITCHEN3D_UI_TESTS "Run Kitchen 3D UI snapshots and undo tests (requires a display)" OFF)
   if(WITH_KITCHEN3D_UI_TESTS)
-    foreach(_kitchen_test IN ITEMS kitchen3d_ui_regression kitchen3d_isolation blaya_native_editor blaya_native_smoke blaya_onion_skin)
+    foreach(_kitchen_test IN ITEMS kitchen3d_startup_splash kitchen3d_ui_regression kitchen3d_isolation blaya_native_editor blaya_native_smoke blaya_onion_skin)
       add_test(NAME ${_kitchen_test}
         COMMAND "${TEST_PYTHON_EXE}" "${TEST_PYTHON_DIR}/run_kitchen3d_test.py"
           --blender "${TEST_BLENDER_EXE}" --ui

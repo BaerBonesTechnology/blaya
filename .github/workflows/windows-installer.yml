@@ -36,6 +36,7 @@ jobs:
         shell: pwsh
         run: |
           Copy-Item scripts/modules/blaya/* install/5.3/scripts/modules/blaya/ -Recurse -Force
+          Copy-Item scripts/startup/blaya_framework.py install/5.3/scripts/startup/blaya_framework.py -Force
           python tests/python/run_kitchen3d_test.py --blender install/kitchen3d.exe --script tests/python/kitchen3d_regression.py --output build/installer-smoke/runtime-regression
           if ($LASTEXITCODE -ne 0) { throw 'Windows runtime regression failed' }
       - name: Compile installer

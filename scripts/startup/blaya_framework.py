@@ -44,6 +44,23 @@ def bootstrap():
     return .2 if blaya.workspace.PENDING is not None else None
 
 
+def show_startup_splash():
+    # Recheck in case a file was opened or the preference changed while waiting.
+    if bpy.app.background or bpy.data.filepath or not bpy.context.preferences.view.show_splash:
+        return None
+    import blaya
+    if bpy.app.timers.is_registered(bootstrap) or blaya.workspace.PENDING is not None:
+        return .2
+    if bpy.context.window is not None:
+        bpy.ops.wm.splash('INVOKE_DEFAULT')
+    return None
+
+
+def defer_startup_splash():
+    if not bpy.app.timers.is_registered(show_startup_splash):
+        bpy.app.timers.register(show_startup_splash, first_interval=.2)
+
+
 @persistent
 def after_load(_):
     ensure_tools()
@@ -138,6 +155,8 @@ def unregister():
         _brand_icons = None
     if bpy.app.timers.is_registered(bootstrap):
         bpy.app.timers.unregister(bootstrap)
+    if bpy.app.timers.is_registered(show_startup_splash):
+        bpy.app.timers.unregister(show_startup_splash)
     for handlers in (bpy.app.handlers.load_post, bpy.app.handlers.load_factory_startup_post,
                      bpy.app.handlers.load_factory_preferences_post):
         if after_load in handlers:
