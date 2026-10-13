@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/windows-gpu-tests.yml'
       - 'build_files/kitchen3d/ci.cmake'
+      - 'tests/python/kitchen3d_gpu_build.py'
   workflow_dispatch:
 
 permissions:
