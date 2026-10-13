@@ -16,7 +16,7 @@ Work on `codex/development` and promote changes to `codex/kitchen3d-5.3` when
 ready for a release. **Kitchen 3D development tests** runs on development pushes
 and pull requests targeting either branch. It uses read-only permissions and a
 checksum-pinned Windows release executable to run the current Python tools and
-five background suites, including a real glTF export regression. The glTF test
+six background suites, including a real glTF export regression. The glTF test
 loads the exporter from the checkout rather than from the downloaded runtime.
 
 This workflow creates no installers, release archives, source bundles, uploaded
@@ -79,18 +79,51 @@ and copied the notices, install Inno Setup 6 and run:
 python build_files/kitchen3d/build_installer.py --install install --output dist
 ```
 
-The four background suites cover Kitchen 3D geometry, circularize, loop tools,
-and animation/pose behavior. A separate smoke test checks the installed Python
+The six background suites cover Kitchen 3D geometry, circularize, loop tools,
+animation/pose behavior, glTF instancing and render benchmark selection. A separate smoke test checks the installed Python
 and NumPy runtime, renders with Cycles CPU, and saves/reopens a `.blend` file.
 Packaging runs only after these tests pass. Diagnostics upload even on failure.
 GUI/isolation/screenshot tests and the full upstream C++ suite are not run on
 hosted runners. The existing optional GUI suites remain available locally.
 
-`ci.cmake` starts from Blender's release preset and disables CUDA, OptiX, HIP,
-oneAPI, and DLSS because their compiler/SDK toolchains are not installed on
-these runners. Cycles CPU, Eevee, and macOS Metal remain enabled. The initial
-workflow performs clean builds with three parallel compiler jobs; expect long
-builds rather than quick application-only CI. No signing secrets are needed.
+Windows builds on this development branch enable NVIDIA CUDA and OptiX using
+CUDA 12.8.0 and pinned OptiX 9.0 headers. CUDA kernels and OptiX PTX are packaged;
+users need a supported NVIDIA driver, not the compiler toolkit. AMD HIP, Intel
+oneAPI and DLSS remain disabled. Linux Cycles remains CPU-only; macOS retains Metal.
+
+Compiler outputs are cached with pinned sccache 0.16 using GitHub's cache backend,
+separated by platform. Compiler, flags and source/header hashes determine reuse.
+The first build populates the cache; linking, tests, downloads and packaging still
+run. GitHub branch cache visibility and eviction affect reuse. Cache statistics
+appear in build logs. Dependency archives and library downloads are not cached
+by this change.
+
+**Windows GPU build tests** compiles Windows on development when the GPU build
+configuration changes, and can be manually dispatched. It checks compiled backend
+flags and installed CUDA/OptiX kernels, runs regressions and smoke tests, and
+creates no release packages or uploaded artifacts. Hosted runners cannot verify
+actual GPU rendering; a supported NVIDIA machine must run the benchmark.
+
+## Windows render benchmark
+
+New sessions prefer a detected NVIDIA GPU (OptiX before CUDA); turn off **Prefer
+GPU on Windows startup** in Setup to opt out. Opening existing project files does
+not change their saved render settings. Existing configured compute devices are
+respected.
+
+In **Setup → Cycles Performance**, choose **Benchmark & Optimize Cycles**.
+A separate process with isolated preferences renders a fixed 256px scene at
+32 samples, warms up each device and takes two timed measurements. It compares
+individual NVIDIA devices via OptiX/CUDA and CPU thread counts. The fastest
+successful GPU wins; CPU is selected only if no GPU succeeds. Escape cancels;
+the overall timeout is ten minutes. Process failure or cancellation does not
+apply a result. The benchmark temporarily uses system compute resources.
+
+The result configures the scene that started the benchmark and Cycles device
+preferences. Samples, resolution, engine, bounces and denoising remain unchanged.
+Save your project and preferences to retain the result. This small scene estimates
+device throughput; it does not prove that a large production scene fits GPU memory
+or that the same device is fastest for every workload.
 
 ## Reproduce a build
 

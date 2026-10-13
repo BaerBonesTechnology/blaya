@@ -50,7 +50,7 @@ jobs:
       - name: Run regression suites
         shell: pwsh
         run: |
-          $tests = @('kitchen3d_regression', 'blaya_circular', 'blaya_loop_tools', 'blaya_animation_pose', 'kitchen3d_gltf_instancing')
+          $tests = @('kitchen3d_regression', 'blaya_circular', 'blaya_loop_tools', 'blaya_animation_pose', 'kitchen3d_gltf_instancing', 'kitchen3d_render_benchmark')
           $failed = @()
           foreach ($test in $tests) {
             Write-Output "::group::$test"

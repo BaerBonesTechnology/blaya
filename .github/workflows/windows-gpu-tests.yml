@@ -1,0 +1,118 @@
+name: Windows GPU build tests
+
+on:
+  push:
+    branches: [codex/development]
+    paths:
+      - '.github/workflows/windows-gpu-tests.yml'
+      - 'build_files/kitchen3d/ci.cmake'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kitchen3d-gpu-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GIT_LFS_SKIP_SMUDGE: '1'
+
+jobs:
+  build:
+    name: Build and test ${{ matrix.platform }}
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-x64
+            runner: windows-2022
+            library: windows_x64
+    runs-on: ${{ matrix.runner }}
+    env:
+      SCCACHE_GHA_ENABLED: 'true'
+      SCCACHE_GHA_VERSION: kitchen3d-v1-${{ matrix.platform }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      - name: Restore source assets and pinned platform libraries
+        run: |
+          git lfs install --local
+          git -c lfs.url=https://projects.blender.org/blender/blender.git/info/lfs lfs pull --exclude="tests/files/**"
+          git submodule update --init --checkout --depth 1 -- lib/${{ matrix.library }}
+          git -C lib/${{ matrix.library }} lfs pull
+      - name: Linux build prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-14 g++-14 ninja-build libx11-dev libxxf86vm-dev libxcursor-dev libxi-dev libxrandr-dev libxinerama-dev libegl-dev libwayland-dev libxkbcommon-dev libjack-jackd2-dev libpulse-dev libdbus-1-dev
+          printf 'CC=gcc-14\nCXX=g++-14\n' >> "$GITHUB_ENV"
+      - name: macOS build prerequisites
+        if: runner.os == 'macOS'
+        run: command -v ninja || brew install ninja
+      - name: Configure Windows compiler
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe" -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          Import-Module "$vs/Common7/Tools/Microsoft.VisualStudio.DevShell.dll"
+          Enter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64'
+          'PATH','INCLUDE','LIB','LIBPATH','VCToolsInstallDir','WindowsSdkDir','VCINSTALLDIR','VSINSTALLDIR' | ForEach-Object {
+            "$($_)=$([Environment]::GetEnvironmentVariable($_))" >> $env:GITHUB_ENV
+          }
+      - name: Install compiler cache
+        uses: mozilla-actions/sccache-action@fd02668681acd5f960e1372061bee5e3e987195c # v0.0.11
+        with:
+          version: v0.16.0
+      - name: Install NVIDIA kernel compiler
+        if: runner.os == 'Windows'
+        uses: Jimver/cuda-toolkit@b6fc3a9f3f15256d9d94ffe1254f9c5a2565cde6 # v0.2.30
+        with:
+          cuda: '12.8.0'
+          method: network
+          sub-packages: '["nvcc", "cudart"]'
+      - name: Restore pinned OptiX headers
+        if: runner.os == 'Windows'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: NVIDIA/optix-dev
+          ref: fff65c2a7c592f1ea5f1661ad7d2381cf965f9bd # v9.0.0
+          path: .ci/optix
+          persist-credentials: false
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja -C build_files/kitchen3d/ci.cmake \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/install" \
+            -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+            -DOPTIX_ROOT_DIR="$PWD/.ci/optix" \
+            -DTEST_PYTHON_EXE="$(python -c 'import sys; print(sys.executable)')"
+      - name: Build and install
+        run: cmake --build build --target install --parallel 3
+      - name: Report compiler cache statistics
+        if: always()
+        run: sccache --show-stats
+      - name: Verify Windows GPU support
+        if: runner.os == 'Windows'
+        run: python tests/python/run_kitchen3d_test.py --blender "$PWD/install/kitchen3d.exe" --script "$PWD/tests/python/kitchen3d_gpu_build.py" --output "$PWD/build/gpu-build"
+      - name: Kitchen 3D regression tests
+        run: ctest --test-dir build -C Release -L kitchen3d --output-on-failure --no-tests=error --parallel 1
+      - name: Installed runtime and render smoke test
+        run: |
+          case '${{ matrix.platform }}' in
+            windows-x64) executable="$PWD/install/kitchen3d.exe" ;;
+            linux-x64) executable="$PWD/install/kitchen3d" ;;
+            macos-arm64) executable="$PWD/install/Kitchen 3D.app/Contents/MacOS/Kitchen 3D" ;;
+          esac
+          python tests/python/run_kitchen3d_test.py --blender "$executable" \
+            --script "$PWD/tests/python/kitchen3d_package_smoke.py" --output "$PWD/build/package-smoke"
+      - name: Verify renamed native launcher
+        if: runner.os != 'macOS'
+        run: python tests/python/kitchen3d_launcher_smoke.py --install "$PWD/install"

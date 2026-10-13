@@ -11,3 +11,13 @@ foreach(feature IN ITEMS
 endforeach()
 set(WITH_INSTALL_PORTABLE ON CACHE BOOL "Portable download" FORCE)
 set(WITH_STRICT_BUILD_OPTIONS ON CACHE BOOL "Fail on missing dependencies" FORCE)
+
+# Windows release packages include NVIDIA kernels, so end users need a driver,
+# not the CUDA toolkit. CI installs the pinned compiler and OptiX headers.
+if(WIN32)
+  set(WITH_CYCLES_DEVICE_CUDA ON CACHE BOOL "" FORCE)
+  set(WITH_CYCLES_DEVICE_OPTIX ON CACHE BOOL "" FORCE)
+  set(WITH_CYCLES_CUDA_BINARIES ON CACHE BOOL "" FORCE)
+  set(WITH_CYCLES_CUDA_BUILD_SERIAL ON CACHE BOOL "" FORCE)
+  set(WITH_WINDOWS_SCCACHE ON CACHE BOOL "" FORCE)
+endif()

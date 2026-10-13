@@ -30,6 +30,7 @@ def bootstrap():
     settings = blaya.prefs()
     if settings is None:
         return None
+    blaya.render_benchmark.configure_windows_default(bpy.context.scene)
     if not settings.native_initialized:
         # Kitchen 3D's own preferences directory makes this independent of Blender's.
         if bpy.context.window_manager.keyconfigs.active.name == 'Blender':
