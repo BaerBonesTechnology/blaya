@@ -39,6 +39,9 @@ jobs:
             runner: macos-15
             library: macos_arm64
     runs-on: ${{ matrix.runner }}
+    env:
+      SCCACHE_GHA_ENABLED: 'true'
+      SCCACHE_GHA_VERSION: kitchen3d-v1-${{ matrix.platform }}
     defaults:
       run:
         shell: bash
@@ -74,13 +77,40 @@ jobs:
           'PATH','INCLUDE','LIB','LIBPATH','VCToolsInstallDir','WindowsSdkDir','VCINSTALLDIR','VSINSTALLDIR' | ForEach-Object {
             "$($_)=$([Environment]::GetEnvironmentVariable($_))" >> $env:GITHUB_ENV
           }
+      - name: Install compiler cache
+        uses: mozilla-actions/sccache-action@fd02668681acd5f960e1372061bee5e3e987195c # v0.0.11
+        with:
+          version: v0.16.0
+      - name: Install NVIDIA kernel compiler
+        if: runner.os == 'Windows'
+        uses: Jimver/cuda-toolkit@b6fc3a9f3f15256d9d94ffe1254f9c5a2565cde6 # v0.2.30
+        with:
+          cuda: '12.8.0'
+          method: network
+          sub-packages: '["nvcc", "cudart"]'
+      - name: Restore pinned OptiX headers
+        if: runner.os == 'Windows'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: NVIDIA/optix-dev
+          ref: fff65c2a7c592f1ea5f1661ad7d2381cf965f9bd # v9.0.0
+          path: .ci/optix
+          persist-credentials: false
       - name: Configure
         run: |
           cmake -S . -B build -G Ninja -C build_files/kitchen3d/ci.cmake \
             -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/install" \
+            -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+            -DOPTIX_ROOT_DIR="$PWD/.ci/optix" \
             -DTEST_PYTHON_EXE="$(python -c 'import sys; print(sys.executable)')"
       - name: Build and install
         run: cmake --build build --target install --parallel 3
+      - name: Report compiler cache statistics
+        if: always()
+        run: sccache --show-stats
+      - name: Verify Windows GPU support
+        if: runner.os == 'Windows'
+        run: python tests/python/run_kitchen3d_test.py --blender "$PWD/install/kitchen3d.exe" --script "$PWD/tests/python/kitchen3d_gpu_build.py" --output "$PWD/build/gpu-build"
       - name: Kitchen 3D regression tests
         run: ctest --test-dir build -C Release -L kitchen3d --output-on-failure --no-tests=error --parallel 1
       - name: Installed runtime and render smoke test
@@ -177,7 +207,7 @@ jobs:
 
           Windows: download Kitchen3D-windows-x64-setup.exe for the installation wizard, shortcuts and uninstaller, or use the portable ZIP. macOS Apple Silicon: download the ZIP. Linux x64 (Ubuntu 24.04 or compatible): download the tar.xz. Extract portable archives before launching. These builds are unsigned and not notarized.
 
-          All three platforms passed the five Kitchen 3D background regression suites and an installed-runtime, Cycles CPU render, and save/reopen smoke test. GUI tests and the full upstream test suite are not run by this workflow. Windows/Linux Cycles GPU backends are disabled; macOS retains Metal.
+          All three platforms passed the six Kitchen 3D background regression suites and an installed-runtime, Cycles CPU render, and save/reopen smoke test. GUI tests and the full upstream test suite are not run by this workflow. Windows includes CUDA/OptiX kernels; actual GPU rendering depends on compatible NVIDIA hardware and drivers. Linux Cycles is CPU-only; macOS retains Metal.
 
           Windows Setup also passed installation, shortcut-target, upgrade, installed-runtime and uninstall checks. It installs for the current user and preserves user-owned files when uninstalling.
 

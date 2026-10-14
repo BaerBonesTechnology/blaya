@@ -5,7 +5,7 @@ import textwrap
 import json
 from .search_map import ENTRIES, BY_ID, search
 from .cleanup import RULES, candidates, counts
-from . import sculpt_map, uv_orientation, uv_workflow, model_workflow, shelf_workflow, creation, modeling_tools, workspace, finishing, diagnostics, shelf_presets, animation
+from . import sculpt_map, uv_orientation, uv_workflow, model_workflow, shelf_workflow, creation, modeling_tools, workspace, finishing, diagnostics, shelf_presets, animation, render_benchmark
 from bpy.props import BoolProperty, CollectionProperty, EnumProperty, FloatProperty, StringProperty
 
 # The shelf stores stable command IDs, never executable Python strings.
@@ -236,6 +236,8 @@ class BLAYA_ShelfItem(bpy.types.PropertyGroup):
 
 
 class BLAYA_Preferences(bpy.types.PropertyGroup):
+    prefer_render_gpu: BoolProperty(name='Prefer GPU on Windows startup', default=True,
+        description='Use available NVIDIA GPUs for new sessions, preferring OptiX. Benchmark to compare devices')
     autosave_initialized: BoolProperty(update=preferences_updated, default=False, options={'HIDDEN'})
     native_initialized: BoolProperty(update=preferences_updated, default=False, options={'HIDDEN'})
     maya_keys: BoolProperty(name='Enable Shortcuts', description='Enable viewport shortcuts. Shift-Q opens tools, Ctrl-Space opens the learning map, Ctrl-I isolates selection, and F8–F11 select component modes. Disable to restore base bindings.', default=True, update=keys_updated)
@@ -801,6 +803,7 @@ class BLAYA_PT_setup(bpy.types.Panel):
 
     def draw(self, context):
         workspace.draw(self.layout, context)
+        render_benchmark.draw(self.layout, context)
         draw_keymap_status(self.layout, context)
         box = self.layout.box()
         box.label(text='Auto Save')
@@ -889,6 +892,7 @@ def initialize_preferences():
 
 
 def register():
+    render_benchmark.register()
     sculpt_map.register()
     animation.register()
     uv_orientation.register()
@@ -915,6 +919,7 @@ def register():
 
 
 def unregister():
+    render_benchmark.unregister()
     if bpy.app.timers.is_registered(watch_keyconfig):
         bpy.app.timers.unregister(watch_keyconfig)
     sculpt_map.unregister()

@@ -46,8 +46,9 @@ build as **5.3.0 Beta**. The native application is built and tested on
 Windows, Linux, and macOS before publishing a preview. See its status above for
 the latest result; platform support is not confirmed until that build passes.
 
-Hosted builds include Cycles CPU rendering and macOS Metal support. Windows and
-Linux CUDA, OptiX, HIP and oneAPI backends are disabled in this initial pipeline.
+Development now enables Windows NVIDIA CUDA/OptiX and a GPU-first render benchmark.
+Hardware validation and promotion are still required before those changes reach
+release downloads. Linux Cycles remains CPU-only; macOS retains Metal.
 
 The workflow tools are integrated into this fork. Internal `blaya` identifiers
 and existing preferences paths remain compatible with earlier builds.
