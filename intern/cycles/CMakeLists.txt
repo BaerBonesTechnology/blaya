@@ -27,6 +27,10 @@ if(NOT CYCLES_STANDALONE_REPOSITORY)
 endif()
 
 # Build Flags
+set(CYCLES_CUDA_COMPILER_LAUNCHER "" CACHE STRING
+  "Optional compiler launcher for CUDA and OptiX kernel compilation")
+mark_as_advanced(CYCLES_CUDA_COMPILER_LAUNCHER)
+
 # TODO: this code could be refactored a bit to avoid duplication.
 # NOTE: CXX_HAS_SSE42 is needed in case passing SSE flags fails altogether (`gcc-arm`).
 

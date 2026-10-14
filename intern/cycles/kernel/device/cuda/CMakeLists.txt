@@ -275,7 +275,12 @@ if(WITH_CYCLES_CUDA_BINARIES)
       ${cuda_flags}
     )
 
-    if(WITH_COMPILER_CCACHE AND CCACHE_PROGRAM)
+    if(CYCLES_CUDA_COMPILER_LAUNCHER)
+      add_custom_command(
+        OUTPUT ${cuda_file}
+        COMMAND ${CYCLES_CUDA_COMPILER_LAUNCHER} ${cuda_nvcc_executable} ${_cuda_nvcc_args}
+        DEPENDS ${kernel_sources})
+    elseif(WITH_COMPILER_CCACHE AND CCACHE_PROGRAM)
       add_custom_command(
         OUTPUT ${cuda_file}
         COMMAND ${CCACHE_PROGRAM} ${cuda_nvcc_executable} ${_cuda_nvcc_args}

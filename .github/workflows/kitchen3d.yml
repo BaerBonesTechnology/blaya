@@ -2,7 +2,7 @@ name: Kitchen 3D builds
 
 on:
   push:
-    branches: [codex/kitchen3d-5.3]
+    branches: [kitchen3d-5.3]
     tags: ['kitchen3d-v*']
   workflow_dispatch:
     inputs:
@@ -52,12 +52,43 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.11'
-      - name: Restore source assets and pinned platform libraries
+      - name: Identify pinned downloads
+        id: download-keys
+        run: python build_files/kitchen3d/cache_keys.py --library ${{ matrix.library }} >> "$GITHUB_OUTPUT"
+      - name: Restore source download cache
+        id: source-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .git/lfs/objects
+          key: source-lfs-v1-${{ runner.os }}-${{ steps.download-keys.outputs.source }}
+          restore-keys: source-lfs-v1-${{ runner.os }}-
+      - name: Restore source assets
         run: |
           git lfs install --local
           git -c lfs.url=https://projects.blender.org/blender/blender.git/info/lfs lfs pull --exclude="tests/files/**"
-          git submodule update --init --checkout --depth 1 -- lib/${{ matrix.library }}
-          git -C lib/${{ matrix.library }} lfs pull
+      - name: Save source download cache
+        if: steps.source-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .git/lfs/objects
+          key: source-lfs-v1-${{ runner.os }}-${{ steps.download-keys.outputs.source }}
+      - name: Check out pinned platform library pointers
+        run: git submodule update --init --checkout --depth 1 -- lib/${{ matrix.library }}
+      - name: Restore library download cache
+        id: library-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .git/modules/lib/${{ matrix.library }}/lfs/objects
+          key: library-lfs-v1-${{ matrix.library }}-${{ steps.download-keys.outputs.library }}
+          restore-keys: library-lfs-v1-${{ matrix.library }}-
+      - name: Restore platform library contents
+        run: git -C lib/${{ matrix.library }} lfs pull
+      - name: Save library download cache
+        if: steps.library-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .git/modules/lib/${{ matrix.library }}/lfs/objects
+          key: library-lfs-v1-${{ matrix.library }}-${{ steps.download-keys.outputs.library }}
       - name: Linux build prerequisites
         if: runner.os == 'Linux'
         run: |
@@ -96,12 +127,16 @@ jobs:
           ref: fff65c2a7c592f1ea5f1661ad7d2381cf965f9bd # v9.0.0
           path: .ci/optix
           persist-credentials: false
+      - name: Verify CUDA compiler cache reuse
+        if: runner.os == 'Windows'
+        run: python tests/python/kitchen3d_cuda_cache.py
       - name: Configure
         run: |
           cmake -S . -B build -G Ninja -C build_files/kitchen3d/ci.cmake \
             -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/install" \
             -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
             -DOPTIX_ROOT_DIR="$PWD/.ci/optix" \
+            -DCYCLES_CUDA_COMPILER_LAUNCHER=sccache \
             -DTEST_PYTHON_EXE="$(python -c 'import sys; print(sys.executable)')"
       - name: Build and install
         run: cmake --build build --target install --parallel 3
@@ -162,8 +197,24 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Identify pinned downloads
+        id: download-keys
+        run: python3 build_files/kitchen3d/cache_keys.py >> "$GITHUB_OUTPUT"
+      - name: Restore source download cache
+        id: source-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .git/lfs/objects
+          key: source-lfs-v1-${{ runner.os }}-${{ steps.download-keys.outputs.source }}
+          restore-keys: source-lfs-v1-${{ runner.os }}-
       - name: Restore source assets
         run: git -c lfs.url=https://projects.blender.org/blender/blender.git/info/lfs lfs pull --exclude="tests/files/**"
+      - name: Save source download cache
+        if: steps.source-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .git/lfs/objects
+          key: source-lfs-v1-${{ runner.os }}-${{ steps.download-keys.outputs.source }}
       - name: Archive fork source and checksum-verified dependency sources
         shell: bash
         run: |

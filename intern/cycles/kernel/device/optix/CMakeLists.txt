@@ -83,6 +83,7 @@ if(WITH_CYCLES_CUDA_BINARIES AND WITH_CYCLES_DEVICE_OPTIX)
         ${SRC_KERNEL_DEVICE_OPTIX_HEADERS}
         $<TARGET_PROPERTY:cycles_kernel,INTERFACE_SOURCES>
       COMMAND
+        ${CYCLES_CUDA_COMPILER_LAUNCHER}
         ${cuda_nvcc_executable}
         --ptx
         -arch=${arch}
