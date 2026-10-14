@@ -93,15 +93,36 @@ oneAPI and DLSS remain disabled. Linux Cycles remains CPU-only; macOS retains Me
 
 Compiler outputs are cached with pinned sccache 0.16 using GitHub's cache backend,
 separated by platform. Compiler, flags and source/header hashes determine reuse.
-The first build populates the cache; linking, tests, downloads and packaging still
-run. GitHub branch cache visibility and eviction affect reuse. Cache statistics
-appear in build logs. Dependency archives and library downloads are not cached
-by this change.
+CUDA and OptiX custom compiler commands also use sccache through
+`CYCLES_CUDA_COMPILER_LAUNCHER`; local builds default to no launcher. Before a
+Windows build, a small CUDA test checks that both cubin and PTX outputs produce
+cache hits and identical bytes on repeat compilation. The first build populates
+the cache; linking, compression, tests and packaging still run. Statistics in the
+build log report actual reuse, including CUDA. No fixed time saving is assumed.
+
+Source LFS objects and platform-library LFS objects use separate download caches.
+Source keys hash the required LFS object IDs; library keys use the exact pinned
+submodule commit. Neither includes a branch name. An older cache can seed a new
+one, but Git LFS still fetches and materializes the current checkout's required
+objects. Only object data is cached, not Git configuration or credentials. These
+caches are saved immediately after downloads, so a later compile failure does
+not discard them. Dependency *source archives* for release compliance are still
+fetched and checksum-verified separately.
+
+GitHub permits restoration from the current branch and the default branch (plus
+eligible PR base scopes); identical keys cannot bypass that restriction. Once
+these workflow changes reach the default release branch, a normal release build
+or a manual **Windows GPU build tests** run on that branch warms caches available
+to development. Running the latter creates no release artifacts. Development
+cannot warm the default branch's cache directly. Branch renames and cache quota
+or eviction can cause cold builds. Keep the same platform namespaces in both
+workflows to preserve reuse when GitHub makes the cache accessible.
 
 **Windows GPU build tests** compiles Windows on development when the GPU build
 configuration changes, and can be manually dispatched. It checks compiled backend
 flags and installed CUDA/OptiX kernels, runs regressions and smoke tests, and
-creates no release packages or uploaded artifacts. Hosted runners cannot verify
+creates no release packages or uploaded artifacts. New native GPU runs wait for
+an active run instead of cancelling it. Hosted runners cannot verify
 actual GPU rendering; a supported NVIDIA machine must run the benchmark.
 
 ## Windows render benchmark
