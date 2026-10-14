@@ -2,18 +2,16 @@
 
 A personal Blender build, shaped around the way I work.
 
-[![Download Kitchen 3D](https://img.shields.io/badge/Download-Kitchen_3D-208C87?style=for-the-badge&logo=github)](https://github.com/BaerBonesTechnology/blaya/releases)
-[![Build and tests](https://github.com/BaerBonesTechnology/blaya/actions/workflows/kitchen3d.yml/badge.svg)](https://github.com/BaerBonesTechnology/blaya/actions/workflows/kitchen3d.yml)
+This is the **5.4 alpha** development branch, based on Blender `main`.
+It has no CI release packaging or published 5.4 downloads. Build and test locally:
 
-Choose **Windows x64**, **Linux x64**, or **macOS Apple Silicon** from the
-release assets. Windows releases include **`Kitchen3D-windows-x64-setup.exe`**
-with an installation wizard, Start menu shortcut, optional desktop shortcut,
-and uninstaller. Choose standalone use or set Kitchen 3D as your `.blend` app
-through Windows Settings; Blender stays installed. The portable ZIP remains available. New assets appear after
-their cross-platform pipeline passes. Extract portable archives before launching;
-these preview builds are
-unsigned and macOS builds are not notarized. Linux packages target Ubuntu 24.04
-or compatible distributions. Intel Macs and Windows/Linux ARM are not included.
+```sh
+python3 build_files/kitchen3d/build_local.py --prepare
+```
+
+See [local build prerequisites and options](build_files/kitchen3d/README.md#54-alpha-local-builds).
+Existing [5.3 releases](https://github.com/BaerBonesTechnology/kitchen-3d/releases)
+remain separate from this branch.
 
 Kitchen 3D brings familiar Maya-style workflows into Blender: a focused modeling
 layout, a dedicated tools panel, and shortcuts that make everyday work feel

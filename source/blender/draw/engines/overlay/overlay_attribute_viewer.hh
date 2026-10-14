@@ -124,12 +124,12 @@ class AttributeViewer : Overlay {
       case OB_MESH: {
         ResourceHandleRange res_handle = manager.unique_handle(ob_ref);
         {
-          gpu::Batch *batch = DRW_cache_mesh_surface_get(&object);
+          Batch *batch = DRW_cache_mesh_surface_get(&object);
           auto &sub = *instance_sub_;
           sub.push_constant("ucolor", float4(color));
           sub.draw(batch, res_handle);
         }
-        if (gpu::Batch *batch = DRW_cache_mesh_loose_edges_get(&object)) {
+        if (Batch *batch = DRW_cache_mesh_loose_edges_get(&object)) {
           auto &sub = *instance_sub_;
           sub.push_constant("ucolor", float4(color));
           sub.draw(batch, res_handle);
@@ -139,13 +139,13 @@ class AttributeViewer : Overlay {
       case OB_POINTCLOUD: {
         auto &sub = *instance_sub_;
         ResourceHandleRange res_handle = manager.unique_handle(ob_ref);
-        gpu::Batch *batch = pointcloud_sub_pass_setup(sub, ob_ref, res_handle, nullptr);
+        Batch *batch = pointcloud_sub_pass_setup(sub, ob_ref, res_handle, nullptr);
         sub.push_constant("ucolor", float4(color));
         sub.draw(batch, res_handle);
         break;
       }
       case OB_CURVES_LEGACY: {
-        gpu::Batch *batch = DRW_cache_curve_edge_wire_get(&object);
+        Batch *batch = DRW_cache_curve_edge_wire_get(&object);
         auto &sub = *instance_sub_;
         sub.push_constant("ucolor", float4(color));
         ResourceHandleRange res_handle = manager.unique_handle(ob_ref);
@@ -178,7 +178,7 @@ class AttributeViewer : Overlay {
                 mesh.attributes().lookup_meta_data(".viewer"))
         {
           if (attribute_type_supports_viewer_overlay(meta_data->data_type)) {
-            gpu::Batch *batch = DRW_cache_mesh_surface_viewer_attribute_get(&object);
+            Batch *batch = DRW_cache_mesh_surface_viewer_attribute_get(&object);
             auto &sub = *mesh_sub_;
             sub.push_constant("opacity", opacity);
             sub.draw(batch, manager.unique_handle(ob_ref));
@@ -202,9 +202,9 @@ class AttributeViewer : Overlay {
               pointcloud_sub_pass_setup(sub, ob_ref, res_handle, nullptr);
 
               /* The viewer shader draws one point per splat. */
-              gpu::Batch *batch = (pointcloud.type == PointCloudType::GSplat) ?
-                                      DRW_gsplat_batch_cache_get_dots(&object) :
-                                      DRW_pointcloud_batch_cache_get_dots(&object);
+              Batch *batch = (pointcloud.type == PointCloudType::GSplat) ?
+                                 DRW_gsplat_batch_cache_get_dots(&object) :
+                                 DRW_pointcloud_batch_cache_get_dots(&object);
               sub.push_constant("opacity", opacity);
               sub.bind_texture("attribute_tx", vertbuf);
               sub.draw(batch, res_handle);
@@ -221,7 +221,7 @@ class AttributeViewer : Overlay {
                   curves.attributes().lookup_meta_data(".viewer"))
           {
             if (attribute_type_supports_viewer_overlay(meta_data->data_type)) {
-              gpu::Batch *batch = DRW_cache_curve_edge_wire_viewer_attribute_get(&object);
+              Batch *batch = DRW_cache_curve_edge_wire_viewer_attribute_get(&object);
               auto &sub = *curve_sub_;
               sub.push_constant("opacity", opacity);
               ResourceHandleRange res_handle = manager.unique_handle(ob_ref);
@@ -247,7 +247,7 @@ class AttributeViewer : Overlay {
               const char *error = nullptr;
               /* The error string will always have been printed by the engine already.
                * No need to display it twice. */
-              gpu::Batch *batch = curves_sub_pass_setup(sub, state.scene, ob_ref.object, error);
+              Batch *batch = curves_sub_pass_setup(sub, state.scene, ob_ref.object, error);
               sub.push_constant("opacity", opacity);
               sub.push_constant("is_point_domain", is_point_domain);
               sub.bind_texture("color_tx", texture);

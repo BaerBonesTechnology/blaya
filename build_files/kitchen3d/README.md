@@ -1,4 +1,36 @@
-# Kitchen 3D CI and downloads
+# Kitchen 3D builds
+
+## 5.4 alpha local builds
+
+`kitchen3d-5.4-alpha` follows Blender `main`. The release-packaging and installer
+workflows are removed on this branch. There are no automatic alpha CI builds,
+release archives, or uploads. The CI documentation below describes the separate
+5.3 branches.
+
+Install Blender's platform build prerequisites, CMake, Ninja, Python 3, Git and
+Git LFS. Run from the checkout:
+
+```sh
+python3 build_files/kitchen3d/build_local.py --prepare
+```
+
+The script fetches pinned platform libraries and upstream LFS assets when
+`--prepare` is supplied, configures a Release build, installs the app locally,
+and runs the Kitchen 3D background regression suites. It does not create a
+release or upload anything. The default build directory is the sibling
+`build_kitchen3d_5.4_alpha`; the app goes in its `install` subdirectory, keeping
+the 5.3 build separate. Subsequent builds can omit `--prepare` unless dependencies
+change. Use `--jobs`, `--build-dir`, `--install-dir`, and `--cmake` to customize
+local paths, or `--dry-run` to inspect commands first.
+
+Windows: use a VS 2022 x64 developer shell with CUDA 12.8 available and OptiX
+headers installed. Run `python` instead of `python3` if needed and pass
+`--optix-root C:/path/to/optix`. NVIDIA kernels are built locally; sccache is
+optional and not required. macOS Apple Silicon uses Metal; Linux x64 uses the
+CPU configuration. Other architectures are not configured by this script.
+
+## 5.3 CI and downloads reference
+
 
 The **Kitchen 3D builds** GitHub Actions workflow builds Windows x64, Linux x64,
 and macOS arm64 independently. Pushes to `kitchen3d-5.3` and tags matching

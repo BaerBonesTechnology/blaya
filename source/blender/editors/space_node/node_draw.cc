@@ -1575,8 +1575,8 @@ void node_socket_add_tooltip(const bNodeTree &ntree, const bNodeSocket &sock, ui
         build_socket_tooltip(tip, C, but, *data->ntree, *data->socket);
       },
       data,
-      MEM_dupalloc_void,
-      MEM_delete_void);
+      ui::but_func_argN_copy<SocketTooltipData>,
+      ui::but_func_argN_free<SocketTooltipData>);
 }
 
 #define NODE_SOCKET_OUTLINE U.pixelsize
@@ -2740,23 +2740,23 @@ static short get_viewer_shortcut_icon(const bNode &node)
     case NODE_VIEWER_SHORTCUT_NONE:
       /* No change by default. */
       return node.typeinfo->ui_icon;
-    case NODE_VIEWER_SHORCTUT_SLOT_1:
+    case NODE_VIEWER_SHORTCUT_SLOT_1:
       return ICON_EVENT_ONEKEY;
-    case NODE_VIEWER_SHORCTUT_SLOT_2:
+    case NODE_VIEWER_SHORTCUT_SLOT_2:
       return ICON_EVENT_TWOKEY;
-    case NODE_VIEWER_SHORCTUT_SLOT_3:
+    case NODE_VIEWER_SHORTCUT_SLOT_3:
       return ICON_EVENT_THREEKEY;
-    case NODE_VIEWER_SHORCTUT_SLOT_4:
+    case NODE_VIEWER_SHORTCUT_SLOT_4:
       return ICON_EVENT_FOURKEY;
-    case NODE_VIEWER_SHORCTUT_SLOT_5:
+    case NODE_VIEWER_SHORTCUT_SLOT_5:
       return ICON_EVENT_FIVEKEY;
-    case NODE_VIEWER_SHORCTUT_SLOT_6:
+    case NODE_VIEWER_SHORTCUT_SLOT_6:
       return ICON_EVENT_SIXKEY;
-    case NODE_VIEWER_SHORCTUT_SLOT_7:
+    case NODE_VIEWER_SHORTCUT_SLOT_7:
       return ICON_EVENT_SEVENKEY;
-    case NODE_VIEWER_SHORCTUT_SLOT_8:
+    case NODE_VIEWER_SHORTCUT_SLOT_8:
       return ICON_EVENT_EIGHTKEY;
-    case NODE_VIEWER_SHORCTUT_SLOT_9:
+    case NODE_VIEWER_SHORTCUT_SLOT_9:
       return ICON_EVENT_NINEKEY;
   }
 

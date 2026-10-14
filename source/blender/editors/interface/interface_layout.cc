@@ -1517,7 +1517,7 @@ static void item_menu_hold(bContext *C, ARegion *butregion, Button *but)
   }
   block_direction_set(block, direction);
 
-  const char *menu_id = static_cast<const char *>(but->hold_argN);
+  const StringRef menu_id = *but->hold_arg;
   MenuType *mt = WM_menutype_find(menu_id, true);
   if (mt) {
     layout->context_set_from_but(but);
@@ -1550,7 +1550,7 @@ PointerRNA Layout::op_menu_hold(wmOperatorType *ot,
 {
   PointerRNA ptr;
   Button *but = uiItemFullO_ptr_ex(this, ot, name, icon, context, flag, &ptr);
-  button_func_hold_set(but, item_menu_hold, BLI_strdup(menu_id));
+  button_func_hold_set(but, item_menu_hold, menu_id);
   return ptr;
 }
 
@@ -2789,8 +2789,8 @@ void button_configure_search(Button *but,
                            searchbox_create_generic,
                            rna_collection_search_update_fn,
                            coll_search,
-                           false,
                            rna_collection_search_arg_free_fn,
+                           nullptr,
                            nullptr,
                            nullptr);
     /* If this is called multiple times for the same button, an earlier call may have taken the
@@ -2979,8 +2979,8 @@ static Button *item_menu(Layout *layout,
                          void *argN,
                          const std::optional<StringRef> tip,
                          bool force_menu,
-                         ButtonArgNFree func_argN_free_fn = MEM_delete_void,
-                         ButtonArgNCopy func_argN_copy_fn = MEM_dupalloc_void)
+                         ButtonArgNFree func_argN_free_fn,
+                         ButtonArgNCopy func_argN_copy_fn)
 {
   Block *block = layout->block();
   Layout *heading_layout = layout_heading_find(layout);
@@ -3068,7 +3068,9 @@ void Layout::menu(MenuType *mt, const std::optional<StringRef> name_opt, int ico
             mt,
             nullptr,
             mt->description ? TIP_(mt->description) : "",
-            false);
+            false,
+            nullptr,
+            nullptr);
 }
 
 void Layout::menu(const StringRef menuname, const std::optional<StringRef> name, int icon)
@@ -3201,8 +3203,16 @@ void Layout::popover(const bContext *C,
 
   CTX_store_set(const_cast<bContext *>(C), previous_ctx);
 
-  Button *but = item_menu(
-      layout, name, icon, item_paneltype_func, pt, nullptr, TIP_(pt->description), true);
+  Button *but = item_menu(layout,
+                          name,
+                          icon,
+                          item_paneltype_func,
+                          pt,
+                          nullptr,
+                          TIP_(pt->description),
+                          true,
+                          nullptr,
+                          nullptr);
   but->type = ButtonType::Popover;
 
   /* Override button size when there is no icon or label. */
@@ -3696,17 +3706,22 @@ void Layout::menu_fn(const StringRefNull name, int icon, MenuCreateFunc func, vo
     return;
   }
 
-  item_menu(this, name, icon, func, arg, nullptr, "", false);
+  item_menu(this, name, icon, func, arg, nullptr, "", false, nullptr, nullptr);
 }
 
-void Layout::menu_fn_argN_free(const StringRefNull name, int icon, MenuCreateFunc func, void *argN)
+void Layout::menu_fn_argN_free(const StringRefNull name,
+                               int icon,
+                               MenuCreateFunc func,
+                               void *argN,
+                               void (*argN_free_fn)(void *argN),
+                               void *(*argN_copy_fn)(const void *argN))
 {
   if (!func) {
     return;
   }
 
   /* Second 'argN' only ensures it gets freed. */
-  item_menu(this, name, icon, func, argN, argN, "", false);
+  item_menu(this, name, icon, func, argN, argN, "", false, argN_free_fn, argN_copy_fn);
 }
 
 struct MenuItemLevel {

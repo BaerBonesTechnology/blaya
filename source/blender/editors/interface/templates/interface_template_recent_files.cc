@@ -50,7 +50,7 @@ static void template_recent_files_tooltip_func(bContext & /*C*/,
                                                Button * /*but*/,
                                                void *argN)
 {
-  char *path = static_cast<char *>(argN);
+  const char *path = static_cast<const std::string *>(argN)->c_str();
 
   /* File name and path. */
   char dirname[FILE_MAX];
@@ -218,7 +218,7 @@ static void template_recent_file(Layout *layout, const std::string &filepath)
   Block *block = layout->block();
   Button *but = button_last(block);
   button_func_tooltip_custom_set(
-      but, template_recent_files_tooltip_func, BLI_strdup(filepath.c_str()), MEM_delete_void);
+      but, template_recent_files_tooltip_func, MEM_new<std::string>(__func__, filepath));
 }
 
 int template_recent_files(Layout *layout,
@@ -258,7 +258,7 @@ static void template_recent_projects_tooltip_func(bContext & /*C*/,
                                                   Button * /*but*/,
                                                   void *argN)
 {
-  const char *path = static_cast<const char *>(argN);
+  const char *path = static_cast<const std::string *>(argN)->c_str();
   tooltip_text_field_add(tip, path, {}, TIP_STYLE_NORMAL, TIP_LC_NORMAL);
 
   if (!BLI_is_dir(path)) {
@@ -297,8 +297,7 @@ int template_recent_projects(Layout *layout, int rows)
       Button *but = button_last(block);
       button_func_tooltip_custom_set(but,
                                      template_recent_projects_tooltip_func,
-                                     BLI_strdup(project.path.c_str()),
-                                     MEM_delete_void);
+                                     MEM_new<std::string>(__func__, project.path));
       if (is_active) {
         button_disable(but, TIP_("Project is already open"));
       }
