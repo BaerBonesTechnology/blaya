@@ -22,7 +22,9 @@ def main():
     root = Path(__file__).resolve().parents[2]
 
     def git(*arguments):
-        return subprocess.check_output(['git', *arguments], cwd=root, text=True).strip()
+        # Git LFS emits UTF-8 paths, regardless of the Windows ANSI code page.
+        return subprocess.check_output(
+            ['git', *arguments], cwd=root, encoding='utf-8').strip()
 
     print(f"source={source_key(git('lfs', 'ls-files', '--long'))}")
     if args.library:
