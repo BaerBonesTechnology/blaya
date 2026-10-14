@@ -30,6 +30,10 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.11'
+      - name: Test download retries
+        run: python tests/python/kitchen3d_download_retry.py
+      - name: Test verified LFS fallback
+        run: python tests/python/kitchen3d_lfs_fallback.py
       - name: Test dependency cache keys
         run: python tests/python/kitchen3d_cache_keys.py
       - name: Download verified runtime fixture
