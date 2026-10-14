@@ -7,6 +7,8 @@ on:
       - '.github/workflows/windows-gpu-tests.yml'
       - 'build_files/kitchen3d/ci.cmake'
       - 'build_files/kitchen3d/cache_keys.py'
+      - 'build_files/kitchen3d/retry_download.py'
+      - 'build_files/kitchen3d/restore_lfs.py'
       - 'intern/cycles/CMakeLists.txt'
       - 'intern/cycles/kernel/device/cuda/CMakeLists.txt'
       - 'intern/cycles/kernel/device/optix/CMakeLists.txt'
@@ -62,7 +64,7 @@ jobs:
       - name: Restore source assets
         run: |
           git lfs install --local
-          git -c lfs.url=https://projects.blender.org/blender/blender.git/info/lfs lfs pull --exclude="tests/files/**"
+          python build_files/kitchen3d/restore_lfs.py --upstream https://projects.blender.org/blender/blender --media-branch blender-v5.3-release --exclude-tests
       - name: Save source download cache
         if: steps.source-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
@@ -70,7 +72,7 @@ jobs:
           path: .git/lfs/objects
           key: source-lfs-v1-${{ runner.os }}-${{ steps.download-keys.outputs.source }}
       - name: Check out pinned platform library pointers
-        run: git submodule update --init --checkout --depth 1 -- lib/${{ matrix.library }}
+        run: python build_files/kitchen3d/retry_download.py -- git submodule update --init --checkout --depth 1 -- lib/${{ matrix.library }}
       - name: Restore library download cache
         id: library-cache
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
@@ -79,7 +81,7 @@ jobs:
           key: library-lfs-v1-${{ matrix.library }}-${{ steps.download-keys.outputs.library }}
           restore-keys: library-lfs-v1-${{ matrix.library }}-
       - name: Restore platform library contents
-        run: git -C lib/${{ matrix.library }} lfs pull
+        run: python build_files/kitchen3d/restore_lfs.py --repo lib/${{ matrix.library }} --upstream https://projects.blender.org/blender/lib-${{ matrix.library }}
       - name: Save library download cache
         if: steps.library-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
@@ -106,6 +108,7 @@ jobs:
             "$($_)=$([Environment]::GetEnvironmentVariable($_))" >> $env:GITHUB_ENV
           }
       - name: Install compiler cache
+        id: compiler-cache
         uses: mozilla-actions/sccache-action@fd02668681acd5f960e1372061bee5e3e987195c # v0.0.11
         with:
           version: v0.16.0
@@ -138,7 +141,7 @@ jobs:
       - name: Build and install
         run: cmake --build build --target install --parallel 3
       - name: Report compiler cache statistics
-        if: always()
+        if: always() && steps.compiler-cache.outcome == 'success'
         run: sccache --show-stats
       - name: Verify Windows GPU support
         if: runner.os == 'Windows'

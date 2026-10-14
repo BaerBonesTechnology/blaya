@@ -105,6 +105,18 @@ Source keys hash the required LFS object IDs; library keys use the exact pinned
 submodule commit. Neither includes a branch name. An older cache can seed a new
 one, but Git LFS still fetches and materializes the current checkout's required
 objects. Only object data is cached, not Git configuration or credentials. These
+download commands retry up to four times with 15, 30 and 60 second waits, reusing
+already-downloaded objects. After LFS retries are exhausted, the fallback checks
+cached objects and downloads missing ones through Blender's media endpoint,
+verifying every object's SHA-256 and size before atomically storing it in the
+cache. Library URLs use the exact pinned commit. Source fallback uses the upstream
+5.3 branch with the fork's exact object hashes, so a different upstream file is
+rejected, never substituted. Media downloads get three attempts with 5 and 10
+second waits. Both endpoints use Blender's server: a complete outage or a media-endpoint
+Cloudflare challenge can still fail a cold-cache job. The Windows media endpoint
+challenged the local live probe; the fallback logic is covered by isolated tests,
+but live Windows media recovery is not yet confirmed. Submodule checkout retries and dependency-source downloads also
+remain bounded; no unverified or older dependency is silently accepted. These
 caches are saved immediately after downloads, so a later compile failure does
 not discard them. Dependency *source archives* for release compliance are still
 fetched and checksum-verified separately.
