@@ -2,7 +2,7 @@ name: Windows GPU build tests
 
 on:
   push:
-    branches: [codex/development]
+    branches: [development]
     paths:
       - '.github/workflows/windows-gpu-tests.yml'
       - 'build_files/kitchen3d/ci.cmake'

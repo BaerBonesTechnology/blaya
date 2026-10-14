@@ -2,9 +2,9 @@ name: Kitchen 3D development tests
 
 on:
   push:
-    branches: [codex/development]
+    branches: [development]
   pull_request:
-    branches: [codex/development, codex/kitchen3d-5.3]
+    branches: [development, kitchen3d-5.3]
   workflow_dispatch:
 
 permissions:

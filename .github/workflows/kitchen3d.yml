@@ -2,7 +2,7 @@ name: Kitchen 3D builds
 
 on:
   push:
-    branches: [codex/kitchen3d-5.3]
+    branches: [kitchen3d-5.3]
     tags: ['kitchen3d-v*']
   workflow_dispatch:
     inputs:

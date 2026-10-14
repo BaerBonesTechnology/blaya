@@ -1,7 +1,7 @@
 # Kitchen 3D CI and downloads
 
 The **Kitchen 3D builds** GitHub Actions workflow builds Windows x64, Linux x64,
-and macOS arm64 independently. Pushes to `codex/kitchen3d-5.3` and tags matching
+and macOS arm64 independently. Pushes to `kitchen3d-5.3` and tags matching
 `kitchen3d-v*` publish a preview only after every build and the source archive job
 succeed. Manual runs publish only when **publish** is checked.
 
@@ -12,7 +12,7 @@ after 14 days; published release downloads do not have that expiration.
 
 ## Development tests
 
-Work on `codex/development` and promote changes to `codex/kitchen3d-5.3` when
+Work on `development` and promote changes to `kitchen3d-5.3` when
 ready for a release. **Kitchen 3D development tests** runs on development pushes
 and pull requests targeting either branch. It uses read-only permissions and a
 checksum-pinned Windows release executable to run the current Python tools and
